@@ -110,7 +110,7 @@
         function bufferComplexRoute(latlngs) {
             control = L.routing.control({
                 waypoints: latlngs.map(latlng => L.latLng(latlng[0], latlng[1])),
-                router: L.Routing.osrmv1({ serviceUrl: 'http://mini.romangarms.com:5001/route/v1' }),
+                router: L.Routing.osrmv1({ serviceUrl: '/proxy' }),
                 routeWhileDragging: true,
                 createMarker: function () { return null; }, // Disable default marker
             }).addTo(map);
@@ -158,55 +158,55 @@
         function bufferSimpleRoute(latlngs) {
             // Draw a route connecting all points
             if (latlngs.length > 1) {
-                            control = L.routing.control({
-                                waypoints: latlngs.map(latlng => L.latLng(latlng[0], latlng[1])),
-                                router: L.Routing.osrmv1({ serviceUrl: 'http://192.168.86.59:5001/route/v1' }),
-                                routeWhileDragging: true,
-                                createMarker: function () { return null; }, // Disable default marker
-                            }).addTo(map);
+                control = L.routing.control({
+                    waypoints: latlngs.map(latlng => L.latLng(latlng[0], latlng[1])),
+                    router: L.Routing.osrmv1({ serviceUrl: '/proxy/' }),
+                    routeWhileDragging: true,
+                    createMarker: function () { return null; }, // Disable default marker
+                }).addTo(map);
 
-                            control.hide(); // Hide the route line
+                control.hide(); // Hide the route line
 
-                            // Create a lineString for buffering
-                            var lineString = turf.lineString(latlngs.map(latlng => [latlng[1], latlng[0]])); // [lng, lat]
+                // Create a lineString for buffering
+                var lineString = turf.lineString(latlngs.map(latlng => [latlng[1], latlng[0]])); // [lng, lat]
 
-                            // Buffer the route with Turf.js
-                            var buffered = turf.buffer(lineString, .5, { units: 'kilometers' }); // 1 km buffer
+                // Buffer the route with Turf.js
+                var buffered = turf.buffer(lineString, .5, { units: 'kilometers' }); // 1 km buffer
 
-                            // Convert the buffer to GeoJSON and add it to the map
-                            var bufferLayer = L.geoJSON(buffered, {
-                                style: function () {
-                                    return { color: 'rgba(0, 0, 255, 0.4)', weight: 2 };
-                                }
-                            }).addTo(map);
+                // Convert the buffer to GeoJSON and add it to the map
+                var bufferLayer = L.geoJSON(buffered, {
+                    style: function () {
+                        return { color: 'rgba(0, 0, 255, 0.4)', weight: 2 };
+                    }
+                }).addTo(map);
 
-                            // Listen for the routesfound event
-                            control.on('routesfound', function (e) {
-                                var routes = e.routes;
-                                var summary = routes[0].summary; // Get the first route's summary
-                                var totalDistance = summary.totalDistance; // Distance in meters
+                // Listen for the routesfound event
+                control.on('routesfound', function (e) {
+                    var routes = e.routes;
+                    var summary = routes[0].summary; // Get the first route's summary
+                    var totalDistance = summary.totalDistance; // Distance in meters
 
-                                // Convert distance to kilometers
-                                var distanceKm = (totalDistance / 1000).toFixed(2); // Convert to km
+                    // Convert distance to kilometers
+                    var distanceKm = (totalDistance / 1000).toFixed(2); // Convert to km
 
-                                document.getElementById('totalDist').innerHTML = "<p>" + distanceKm + " km</p>";
-                            });
+                    document.getElementById('totalDist').innerHTML = "<p>" + distanceKm + " km</p>";
+                });
 
-                            // Adjust the view to show all markers, circles, and the polyline
-                            var bounds = L.latLngBounds(latlngs);
-                            map.fitBounds(bounds);
+                // Adjust the view to show all markers, circles, and the polyline
+                var bounds = L.latLngBounds(latlngs);
+                map.fitBounds(bounds);
 
-                            // Calculate the total area of the route
-                            area = turf.area(buffered) / 1e6; // Convert m² to km²
+                // Calculate the total area of the route
+                area = turf.area(buffered) / 1e6; // Convert m² to km²
 
-                            document.getElementById('totalArea').innerHTML = "<p>" + Math.round(area * 100) / 100 + "km²" + "</p>";
+                document.getElementById('totalArea').innerHTML = "<p>" + Math.round(area * 100) / 100 + "km²" + "</p>";
 
-                            document.getElementById('totalAreaPct').innerHTML = "<p>" + area / 863440 + "%" + "</p>";
+                document.getElementById('totalAreaPct').innerHTML = "<p>" + area / 863440 + "%" + "</p>";
 
 
-                       
+
+            }
         }
-    }
 
 
 

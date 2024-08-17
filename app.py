@@ -11,9 +11,11 @@ app = Flask(__name__)
 def index():
     return render_template("index.html")
 
+
 @app.route("/navbar")
 def navbar():
     return render_template("navbar.html")
+
 
 @app.route("/sign_out")
 def sign_out():
@@ -24,6 +26,7 @@ def sign_out():
     resp.set_cookie("serverurl", expires=0)
 
     return resp
+
 
 @app.route("/setcookie", methods=["POST", "GET"])
 def setcookie():
@@ -37,7 +40,6 @@ def setcookie():
         resp.set_cookie("username", username)
         resp.set_cookie("password", password)
         resp.set_cookie("serverurl", serverurl)
-
 
         return resp
 
@@ -90,9 +92,30 @@ def get_locations():
         return jsonify({"error": str(err)}), 500
 
 
+@app.route("/proxy/<path:url>", methods=["GET"])
+def proxy_route(url):
+    print("Proxying request to insecure server")
+
+
+
+    # Construct the URL you want to forward the request to
+    target_url = f'http://mini.romangarms.com:5001/route/v1/{url}'
+
+    print("target_url is ", target_url)
+
+    # Forward the request to the insecure server
+    response = requests.get(target_url)
+
+
+    print("response is ", response)
+
+    # Return the response back to the client
+    return jsonify(response.json())
+
+
 if __name__ == "__main__":
 
-    #app.run(host='0.0.0.0', port=5000)
+    # app.run(host='0.0.0.0', port=5000)
 
     from waitress import serve
 
