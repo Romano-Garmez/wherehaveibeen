@@ -57,7 +57,6 @@
 
 
         function fetchLocations() {
-
             fetch('/locations?' + new URLSearchParams({
                 startdate: document.getElementById('startBox').value,
                 enddate: document.getElementById('endBox').value,
@@ -71,7 +70,7 @@
                     return response.json();
                 })
                 .then(data => {
-                    //successfully retrieved data, hide login prompt
+                    // Successfully retrieved data, hide login prompt
                     closeForm();
 
                     if (data.features && Array.isArray(data.features)) {
@@ -85,16 +84,80 @@
                                 latlngs.push([lat, lng]);
                                 // Add marker to the map
                                 L.marker([lat, lng]).addTo(map)
-                                    .bindPopup(`<b>${feature.properties.name}</b><br>Velocity: ${feature.properties.vel} km/h`)
-
-
-                                // Add a circle with a fixed radius around each waypoint
-                                L.circle([lat, lng], { radius: 500, color: 'rgba(0, 0, 255, 0)', weight: 1 }).addTo(map);
+                                    .bindPopup(`<b>${feature.properties.name}</b><br>Velocity: ${feature.properties.vel} km/h`);
                             }
                         });
 
-                        // Draw a route connecting all points
+                        // Get selected buffering method
+                        var bufferingMethod = document.getElementById('bufferMethod').value;
+
                         if (latlngs.length > 1) {
+                            if (bufferingMethod === 'complexRoute') {
+                                bufferComplexRoute(latlngs);
+                            } else if (bufferingMethod === 'simpleRoute') {
+                                bufferSimpleRoute(latlngs);
+                            }
+                        }
+                    } else {
+                        console.error('Unexpected data format:', data);
+                    }
+                })
+                .catch(error => {
+                    console.error('Fetch error:', error);
+                });
+        }
+
+        function bufferComplexRoute(latlngs) {
+            control = L.routing.control({
+                waypoints: latlngs.map(latlng => L.latLng(latlng[0], latlng[1])),
+                router: L.Routing.osrmv1({ serviceUrl: 'http://192.168.86.59:5001/route/v1' }),
+                routeWhileDragging: true,
+                createMarker: function () { return null; }, // Disable default marker
+            }).addTo(map);
+
+            control.hide(); // Hide the route line
+
+            // Listen for the routesfound event
+            control.on('routesfound', function (e) {
+                var routes = e.routes;
+                var summary = routes[0].summary; // Get the first route's summary
+                var totalDistance = summary.totalDistance; // Distance in meters
+
+                // Convert distance to kilometers
+                var distanceKm = (totalDistance / 1000).toFixed(2); // Convert to km
+                document.getElementById('totalDist').innerHTML = "<p>" + distanceKm + " km</p>";
+
+                // Create a lineString for buffering based on the actual route
+                var routeCoords = routes[0].coordinates.map(coord => [coord.lng, coord.lat]);
+                var lineString = turf.lineString(routeCoords);
+
+                // Simplify the route before buffering
+                var simplifiedLineString = turf.simplify(lineString, { tolerance: 0.001, highQuality: false });
+
+                // Buffer the route with Turf.js
+                var buffered = turf.buffer(simplifiedLineString, 0.5, { units: 'kilometers' });
+
+                // Convert the buffer to GeoJSON and add it to the map
+                var bufferLayer = L.geoJSON(buffered, {
+                    style: function () {
+                        return { color: 'rgba(0, 0, 255, 0.4)', weight: 2 };
+                    }
+                }).addTo(map);
+
+                // Adjust the view to show the entire buffered area
+                var bounds = bufferLayer.getBounds();
+                map.fitBounds(bounds);
+
+                // Calculate the total area of the route
+                var area = turf.area(buffered) / 1e6; // Convert m² to km²
+                document.getElementById('totalArea').innerHTML = "<p>" + Math.round(area * 100) / 100 + "km²" + "</p>";
+                document.getElementById('totalAreaPct').innerHTML = "<p>" + area / 863440 + "%" + "</p>";
+            });
+        }
+
+        function bufferSimpleRoute(latlngs) {
+            // Draw a route connecting all points
+            if (latlngs.length > 1) {
                             control = L.routing.control({
                                 waypoints: latlngs.map(latlng => L.latLng(latlng[0], latlng[1])),
                                 router: L.Routing.osrmv1({ serviceUrl: 'http://192.168.86.59:5001/route/v1' }),
@@ -141,15 +204,11 @@
                             document.getElementById('totalAreaPct').innerHTML = "<p>" + area / 863440 + "%" + "</p>";
 
 
-                        }
-                    } else {
-                        console.error('Unexpected data format:', data);
-                    }
-                })
-                .catch(error => {
-                    console.error('Fetch error:', error);
-                });
+                       
         }
+    }
+
+
 
 
 
@@ -175,11 +234,17 @@
             <!-- MAP CONTROLS -->
             <h1>User </h1>
             <!--<form action="#" onsubmit="filterMap()">-->
-                <input type="text" id="userBox" onkeyup="" placeholder="User (ex. roman)" value="" />
-                <input type="text" id="deviceBox" onkeyup="" placeholder="Device (ex. romaniphone)" value="" />
-                <input type="submit" onsubmit="filterMap()" style="display: none" />
+            <input type="text" id="userBox" onkeyup="" placeholder="User (ex. roman)" value="" />
+            <input type="text" id="deviceBox" onkeyup="" placeholder="Device (ex. romaniphone)" value="" />
+            <input type="submit" onsubmit="filterMap()" style="display: none" />
             <!--</form>-->
             <p></p>
+
+            <select id="bufferMethod">
+                <option value="complexRoute">Complex Route Buffer</option>
+                <option value="simpleRoute">Simple Route Buffer</option>
+            </select>
+
 
             <h1 id="title">Remove Elements </h1>
 
