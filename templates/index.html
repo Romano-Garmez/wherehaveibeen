@@ -110,7 +110,7 @@
         function bufferComplexRoute(latlngs) {
             control = L.routing.control({
                 waypoints: latlngs.map(latlng => L.latLng(latlng[0], latlng[1])),
-                router: L.Routing.osrmv1({ serviceUrl: 'http://192.168.86.59:5001/route/v1' }),
+                router: L.Routing.osrmv1({ serviceUrl: 'http://mini.romangarms.com:5001/route/v1' }),
                 routeWhileDragging: true,
                 createMarker: function () { return null; }, // Disable default marker
             }).addTo(map);
