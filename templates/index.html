@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Owntracks Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
+
+    <script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+
+    <link href="/static/css/styles.css" rel="stylesheet">
+
+</head>
+
+<body>
+    <div id="map"></div>
+    <script>
+        var control;
+        // Initialize the map
+        var map = L.map('map').setView([37.7749, -122.4194], 13);
+
+        // Add a tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+
+
+        function fetchLocations() {
+
+            fetch('/locations?' + new URLSearchParams({
+                startdate: document.getElementById('startBox').value,
+                enddate: document.getElementById('endBox').value,
+                user: document.getElementById('userBox').value,
+                device: document.getElementById('deviceBox').value
+            }).toString())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.features && Array.isArray(data.features)) {
+                        // Create an array to hold the coordinates
+                        var latlngs = [];
+
+                        data.features.forEach(feature => {
+                            if (feature.geometry && feature.geometry.coordinates) {
+                                const [lng, lat] = feature.geometry.coordinates;
+                                // Add coordinates to the array
+                                latlngs.push([lat, lng]);
+                                // Add marker to the map
+                                L.marker([lat, lng]).addTo(map)
+                                    .bindPopup(`<b>${feature.properties.name}</b><br>Velocity: ${feature.properties.vel} km/h`)
+
+
+                                // Add a circle with a fixed radius around each waypoint
+                                L.circle([lat, lng], { radius: 500, color: 'rgba(0, 0, 255, 0)', weight: 1 }).addTo(map);
+                            }
+                        });
+
+                        // Draw a route connecting all points
+                        if (latlngs.length > 1) {
+                            control = L.routing.control({
+                                waypoints: latlngs.map(latlng => L.latLng(latlng[0], latlng[1])),
+                                router: L.Routing.osrmv1({ serviceUrl: 'http://192.168.86.59:5001/route/v1' }),
+                                routeWhileDragging: true,
+                                createMarker: function () { return null; }, // Disable default marker
+                            }).addTo(map);
+
+                            control.hide(); // Hide the route line
+
+                            // Create a lineString for buffering
+                            var lineString = turf.lineString(latlngs.map(latlng => [latlng[1], latlng[0]])); // [lng, lat]
+
+                            // Buffer the route with Turf.js
+                            var buffered = turf.buffer(lineString, .5, { units: 'kilometers' }); // 1 km buffer
+
+                            // Convert the buffer to GeoJSON and add it to the map
+                            var bufferLayer = L.geoJSON(buffered, {
+                                style: function () {
+                                    return { color: 'rgba(0, 0, 255, 0.2)', weight: 2 };
+                                }
+                            }).addTo(map);
+
+                            // Listen for the routesfound event
+                            control.on('routesfound', function (e) {
+                                var routes = e.routes;
+                                var summary = routes[0].summary; // Get the first route's summary
+                                var totalDistance = summary.totalDistance; // Distance in meters
+
+                                // Convert distance to kilometers
+                                var distanceKm = (totalDistance / 1000).toFixed(2); // Convert to km
+
+                                document.getElementById('totalDist').innerHTML = "<p>" + distanceKm + " km</p>";
+                            });
+
+                            // Adjust the view to show all markers, circles, and the polyline
+                            var bounds = L.latLngBounds(latlngs);
+                            map.fitBounds(bounds);
+
+                            // Calculate the total area of the route
+                            area = turf.area(buffered) / 1e6; // Convert m² to km²
+
+                            document.getElementById('totalArea').innerHTML = "<p>" + Math.round(area * 100) / 100 + "km²" + "</p>";
+
+                            document.getElementById('totalAreaPct').innerHTML = "<p>" + area / 863440 + "%" + "</p>";
+
+
+                        }
+                    } else {
+                        console.error('Unexpected data format:', data);
+                    }
+                })
+                .catch(error => {
+                    console.error('Fetch error:', error);
+                });
+        }
+
+
+
+    </script>
+
+    <div id="infoBox">
+        <div id="leftPanel">
+            <h1 id="title">Information </h1>
+            <p> This map shows the location of the devices that are sending their location data to the Owntracks server.
+            </p>
+
+            <h4>Total distance driven </h4>
+            <div id="totalDist"></div>
+
+            <h4>Area explored is </h4>
+            <div id="totalArea"></div>
+
+            <h4>Percentage of west coast </h4>
+            <div id="totalAreaPct"></div>
+        </div>
+        <div id="rightPanel">
+            <h1 id="title">Top Spots </h1>
+            <ul id="spotsList">
+                <li>Hamilton Viewpoint Park </li>
+                <li>Cedar River Trail Park </li>
+                <li>Dr. Jose Rizal Park </li>
+            </ul>
+
+            <!--TODO:-->
+            <h1 id="title">Filter Data </h1>
+
+            <h4>Start Date </h4>
+            <input type="date" id="startBox" name="trip-start" value="2015-01-01" min="2015-01-01" max="2099-12-31" />
+            <h4>End Date </h4>
+            <input type="date" id="endBox" name="trip-start" value="2099-12-31" min="2015-01-01" max="2099-12-31" />
+            <p></p>
+            <h4>User </h4>
+            <input type="text" id="userBox" placeholder="User" value="roman" />
+            <input type="text" id="deviceBox" placeholder="Device" value="romaniphone" />
+            <input type="button" value="Submit" onclick="filterMap()" />
+
+
+
+        </div>
+    </div>
+
+    <form action = "/setcookie" method = "POST">
+        <p><h3>Enter userID</h3></p>
+        <p><input type = 'text' name = 'username'/></p>
+        <p><input type = 'password' name = 'password'/></p>
+        <p><input type = 'submit' value = 'Login'/></p>
+     </form>
+</body>
+<script>
+    function filterMap() {
+        console.log("Filtering map");
+
+        eraseRoute();
+        eraseMarkers();
+
+        //Remake route
+        // Add a tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        fetchLocations();
+    }
+
+    function eraseRoute() {
+        map.removeControl(control);
+    }
+
+    function eraseMarkers() {
+        map.eachLayer((layer) => {
+            layer.remove();
+        });
+    }
+
+</script>
+
+<script>
+    fetchLocations();
+</script>
+
+</html>
