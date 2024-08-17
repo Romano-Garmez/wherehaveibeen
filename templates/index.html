@@ -20,6 +20,7 @@
 
     <script src="https://code.jquery.com/jquery-1.10.2.js"></script>
     <script type="text/javascript" src="/static/scripts/placeholderReplacement.js"></script>
+    <script type="text/javascript" src="/static/scripts/logInPanel.js"></script>
 
 </head>
 
@@ -151,7 +152,44 @@
                 });
         }
 
+        function filterMap() {
+            console.log("Filtering map");
 
+            try {
+                eraseRoute();
+                eraseLayers();
+            }
+            catch (err) {
+                console.log("No map data to erase");
+            }
+
+
+            //Remake route
+            // Add a tile layer
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+
+            fetchLocations();
+        }
+
+        function eraseRoute() {
+            map.removeControl(control);
+        }
+
+        function eraseMarkers() {
+            map.eachLayer((layer) => {
+                if (layer instanceof L.Marker) {
+                    layer.remove();
+                }
+            });
+        }
+
+        function eraseLayers() {
+            map.eachLayer((layer) => {
+                layer.remove();
+            });
+        }
 
     </script>
 
@@ -173,87 +211,53 @@
         </div>
         <div id="rightPanel">
             <!-- MAP CONTROLS -->
+
+
+            <h1 id="title">Filter Data </h1>
+
+            <form onsubmit="filterMap()">
+                <div style="float:left; width: 50%; margin-bottom: 5%;">
+                    <h4>User </h4>
+                    <input type="text" id="userBox" onkeyup="" placeholder="User (ex. roman)" value="" />
+                </div>
+                <div style="float:left; width: 50%; margin-bottom: 5%;">
+                    <h4>User Device </h4>
+                    <input type="text" id="deviceBox" onkeyup="" placeholder="Device (ex. romaniphone)" value="" />
+                </div>
+                <br>
+
+                <div style="float:left; width: 50%; margin-bottom: 5%;">
+                    <h4>Start Date </h4>
+                    <input type="date" id="startBox" onkeyup="" name="trip-start" value="2015-01-01" min="2015-01-01"
+                        max="2099-12-31" />
+                </div>
+                <div style="float:left; width: 50%; margin-bottom: 5%;">
+                    <h4>End Date </h4>
+                    <input type="date" id="endBox" onkeyup="" name="trip-start" value="2099-12-31" min="2015-01-01"
+                        max="2099-12-31" />
+                </div>
+                <input type="submit" value="Submit" onsubmit="filterMap()" />
+                <input type="submit" onsubmit="filterMap()" style="display: none" />
+            </form>
+
+            <br>
+
             <h1 id="title">Remove Elements </h1>
 
             <input type="button" value="Remove Route" onclick="eraseRoute()" />
             <input type="button" value="Remove Markers" onclick="eraseMarkers()" />
             <input type="button" value="Refresh" onclick="filterMap()" />
-
-            <p></p>
-
-            <h1 id="title">Filter Data </h1>
-
-            <h4>Start Date </h4>
-            <input type="date" id="startBox" onkeyup="" name="trip-start" value="2015-01-01"
-                min="2015-01-01" max="2099-12-31" />
-            <h4>End Date </h4>
-            <input type="date" id="endBox" onkeyup="" name="trip-start" value="2099-12-31"
-                min="2015-01-01" max="2099-12-31" />
-            <p></p>
-            <h4>User </h4>
-            <input type="text" id="userBox" onkeyup="" placeholder="User (ex. roman)" value="" />
-            <input type="text" id="deviceBox" onkeyup="" placeholder="Device (ex. romaniphone)"
-                value="" />
-            <input type="button" value="Submit" onclick="filterMap()" />
         </div>
     </div>
 
 
 </body>
 <script>
-    function filterMap() {
-        console.log("Filtering map");
-
-        try {
-            eraseRoute();
-            eraseLayers();
-        }
-        catch (err) {
-            console.log("No map data to erase");
-        }
 
 
-        //Remake route
-        // Add a tile layer
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(map);
 
-        fetchLocations();
-    }
-
-    function eraseRoute() {
-        map.removeControl(control);
-    }
-
-    function eraseMarkers() {
-        map.eachLayer((layer) => {
-            if (layer instanceof L.Marker) {
-                layer.remove();
-            }
-        });
-    }
-
-    function eraseLayers() {
-        map.eachLayer((layer) => {
-            layer.remove();
-        });
-    }
-
-</script>
-
-<script>
+    //run at end of page load
     fetchLocations();
-
-    function openForm() {
-        document.getElementById("myForm").style.display = "block";
-        document.getElementById("sign_out").style.display = "none"
-    }
-    function closeForm() {
-        document.getElementById("myForm").style.display = "none";
-        document.getElementById("sign_out").style.display = "block";
-    }
-
 </script>
 
 </html>
