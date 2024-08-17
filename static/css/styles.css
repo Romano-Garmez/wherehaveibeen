@@ -106,6 +106,10 @@ li {
     color: white;
 }
 
+.navbar-brand:hover {
+    color: white;
+}
+
 .nav-link {
     font-size: 1em;
     color: rgb(200, 200, 200);

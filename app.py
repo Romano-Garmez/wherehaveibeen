@@ -1,8 +1,6 @@
 from flask import Flask, make_response, redirect, render_template, jsonify, request
 import requests
 from requests.auth import HTTPBasicAuth
-import sys
-import os
 
 app = Flask(__name__)
 
@@ -11,10 +9,17 @@ app = Flask(__name__)
 def index():
     return render_template("index.html")
 
+"""Navbar replacement doesn't work if you don't host it somewhere
 
+"""
 @app.route("/navbar")
 def navbar():
     return render_template("navbar.html")
+
+
+"""Sign out by deleting cookie
+Actually just set the cookie to expire immediately
+"""
 
 
 @app.route("/sign_out")
@@ -26,6 +31,11 @@ def sign_out():
     resp.set_cookie("serverurl", expires=0)
 
     return resp
+
+
+"""Create cookie with OwnTracks login info and URL
+
+"""
 
 
 @app.route("/setcookie", methods=["POST", "GET"])
@@ -44,9 +54,16 @@ def setcookie():
         return resp
 
 
+"""Get OwnTracks data from server and return to client
+
+
+"""
+
+
 @app.route("/locations")
 def get_locations():
     try:
+        # these were reasonable defaults, probably don't need them
         params = {
             "from": "2015-01-01T01:00:00.0002Z",
             "to": "2099-12-31T23:59:59.000Z",
@@ -55,6 +72,7 @@ def get_locations():
             "device": "userdevice",
         }
 
+        # get filters from query
         startDate = request.args.get("startdate")
         endDate = request.args.get("enddate")
         user = request.args.get("user")
@@ -73,6 +91,7 @@ def get_locations():
             params["device"] = device
             print(params["device"])
 
+        # go make the request with login info from cookie
         response = requests.get(
             request.cookies.get("serverurl") + "/api/0/locations",
             auth=HTTPBasicAuth(
@@ -92,20 +111,27 @@ def get_locations():
         return jsonify({"error": str(err)}), 500
 
 
+"""Proxy all insecure requests to the insecure server
+
+Unfortunately, the insecure server does not support HTTPS. 
+This means that we cannot make requests to it from the 
+client browser without mixed content errors
+This route makes the server handle insecure requests so 
+we don't have to
+"""
+
+
 @app.route("/proxy/<path:url>", methods=["GET"])
 def proxy_route(url):
     print("Proxying request to insecure server")
 
-
-
     # Construct the URL you want to forward the request to
-    target_url = f'http://mini.romangarms.com:5001/route/v1/{url}'
+    target_url = f"http://mini.romangarms.com:5001/route/v1/{url}"
 
     print("target_url is ", target_url)
 
     # Forward the request to the insecure server
     response = requests.get(target_url)
-
 
     print("response is ", response)
 
