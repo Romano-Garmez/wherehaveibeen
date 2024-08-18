@@ -8,6 +8,11 @@ body {
     padding: 1%;
 }
 
+#infoPanel {
+    margin: 1%;
+    padding: 5%;
+}
+
 #map {
     height: 80vh;
     width: 100%;
@@ -35,8 +40,17 @@ p {
     font-size: 1.5em;
 }
 
+a {
+    color: #4870AF;
+    font-size: 1.5em;
+}
+
 li {
     font-size: 1.5em;
+}
+
+h4 {
+   font-weight: bold;
 }
 
 /* The popup form - hidden by default */
@@ -107,6 +121,7 @@ li {
 }
 
 .navbar-brand {
+    font-weight: bold;
     font-size: 2em;
     color: white;
 }
@@ -118,6 +133,11 @@ li {
 .nav-link {
     font-size: 1em;
     color: rgb(200, 200, 200);
+}
+
+.active,
+.navbar ul li a:hover {
+  color: #FFF !important;
 }
 
 #sign_out {

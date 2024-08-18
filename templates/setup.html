@@ -1,0 +1,63 @@
+{% extends "layout.html" %}
+
+{%block title %}
+<title>Set Up WhereHaveIBeen</title>
+{%endblock%}
+
+{% block main %}
+
+<div id="infoPanel">
+
+    <h1 id="title">What you will need </h1>
+    <br>
+    <ul>
+        <li>Your own OwnTracks server</li>
+        <li>OwnTracks app on your phone</li>
+        <li>Your own OSRM server (maybe)</li>
+        <li>Your own domain (recommended, not required)</li>
+    </ul>
+
+    <h1 id="title">What you will do</h1>
+    <br>
+
+    <h4>Server Setup</h4>
+    <p>First things first, get your own OwnTracks server set up. I'd offer to let you use mine, but I don't want to
+        be responsible for your location data! The main things to look at are the official OwnTracks guide, and
+        posts by real people trying to set it up</p>
+    <a href="https://owntracks.org/booklet/guide/quicksetup/">Official OwnTracks Guide</a>
+    <a href="https://bhdouglass.com/blog/self-hosted-device-tracking-with-owntracks/">Brian Douglass Guide</a>
+
+    <p>You need to get the server up and running, port forward as necessary so your server can be reached on the
+        internet, then get your phone set up to start pinging your server!</p>
+
+    <br>
+
+    <h4>OwnTracks App</h4>
+    <p>Next up is to grab the OwnTracks app for iOS or Android. If all you want is location history, you can stop
+        here. If you want to see what areas of the world (or west coast) you've explored so far, keep going!</p>
+
+    <br>
+
+    <h4>OSRM Server (maybe optional)</h4>
+    <p>If you're content with staying on the west coast, you can use my server for this. I host an Open Source
+        Routing Machine server for Washington, Oregon, and California as those are the only areas I really visit.
+        If you live elsewhere, you'll need to host your own. You can do that by following the readme linked below.
+        Additionally, to use this you'll need to host this flask app yourself, as the OSRM server is hardcoded. I'll
+        fix this in a future update.
+    </p>
+    <a href="https://github.com/Project-OSRM/osrm-backend">OSRM Backend</a>
+
+    <p>Note! If you want more than one region, you can combine multiple .osm.pbf files into one to host with a tool
+        called "osmium-tool".</p>
+
+    <br>
+
+    <h4>Domain</h4>
+    <p>You may have noticed this is all under the lovely "romangarms.com" domain. You don't need to do this, you
+        could just enter your IP address into the url bar in your browser, but it makes things nice.</p>
+
+</div>
+
+</div>
+
+{%endblock%}

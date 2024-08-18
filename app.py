@@ -9,9 +9,13 @@ app = Flask(__name__)
 def index():
     return render_template("index.html")
 
-@app.route("/guide")
+@app.route("/about")
 def guide():
-    return render_template("howtouse.html")
+    return render_template("about.html")
+
+@app.route("/setup")
+def setup():
+    return render_template("setup.html")
 
 
 """Sign out by deleting cookie
