@@ -1,0 +1,153 @@
+{% extends "layout.html" %}
+
+{%block title %}
+<title>How To Set Up WhereHaveIBeen</title>
+{%endblock%}
+
+{% block main %}
+
+<div id="map"></div>
+
+<script>
+
+    var control;
+
+    // Initialize the map
+    var map = L.map('map').setView([37.7749, -122.4194], 13);
+
+    // Add a tile layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    // Fake data: Coordinates for markers and route
+    var fakeData = [
+        { lat: 37.7743, lng: -122.4202, name: 'Start Point' },  // Start Point
+        { lat: 37.7949, lng: -122.3936, name: 'Point A' },
+        { lat: 37.8063, lng: -122.4076, name: 'Point B' },
+        { lat: 37.8037, lng: -122.4152, name: 'Point C' },
+        { lat: 37.8026, lng: -122.4057, name: 'Point D' },
+        { lat: 37.8027, lng: -122.4143, name: 'Point E' },
+        { lat: 37.8019, lng: -122.4198, name: 'Point F' },
+        { lat: 37.8044, lng: -122.4251, name: 'Point G' },
+        { lat: 37.7945, lng: -122.4114, name: 'Point H' },
+        { lat: 37.7856, lng: -122.4217, name: 'Point I' },
+        { lat: 37.7841, lng: -122.4354, name: 'Point J' },
+    ];
+
+    var latlngs = fakeData.map(p => [p.lat, p.lng]);
+
+    // Add markers to the map
+    fakeData.forEach(point => {
+        L.marker([point.lat, point.lng]).addTo(map)
+            .bindPopup(`<b>${point.name}</b>`);
+    });
+
+    // Call the bufferComplexRoute function
+    bufferComplexRoute(latlngs);
+
+    function bufferComplexRoute(latlngs) {
+        control = L.Routing.control({
+            waypoints: latlngs.map(latlng => L.latLng(latlng[0], latlng[1])),
+            router: L.Routing.osrmv1({ serviceUrl: '/proxy' }), // Using public OSRM service for demo
+            routeWhileDragging: true,
+            createMarker: function () { return null; }, // Disable default marker
+        }).addTo(map);
+
+        control.hide(); // Hide the route line
+
+        // Listen for the routesfound event
+        control.on('routesfound', function (e) {
+            var routes = e.routes;
+            var summary = routes[0].summary;
+            var totalDistance = summary.totalDistance;
+
+            // Create a lineString for buffering based on the actual route
+            var routeCoords = routes[0].coordinates.map(coord => [coord.lng, coord.lat]);
+            var lineString = turf.lineString(routeCoords);
+
+            // Simplify the route before buffering
+            var simplifiedLineString = turf.simplify(lineString, { tolerance: 0.001, highQuality: false });
+
+            // Buffer the route with Turf.js
+            var buffered = turf.buffer(simplifiedLineString, 0.5, { units: 'kilometers' });
+
+            // Convert the buffer to GeoJSON and add it to the map
+            var bufferLayer = L.geoJSON(buffered, {
+                style: function () {
+                    return { color: 'rgba(0, 0, 255, 0.4)', weight: 2 };
+                }
+            }).addTo(map);
+
+            // Adjust the view to show the entire buffered area
+            var bounds = bufferLayer.getBounds();
+            map.fitBounds(bounds);
+        });
+    }
+</script>
+
+<script>
+
+    function filterMap() {
+        console.log("Filtering map");
+
+        try {
+            eraseRoute();
+            eraseLayers();
+        }
+        catch (err) {
+            console.log("No map data to erase");
+        }
+
+
+        //Remake route
+        // Add a tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        fetchLocations();
+    }
+
+    function eraseRoute() {
+        map.removeControl(control);
+    }
+
+    function eraseMarkers() {
+        map.eachLayer((layer) => {
+            if (layer instanceof L.Marker) {
+                layer.remove();
+            }
+        });
+    }
+
+    function eraseLayers() {
+        map.eachLayer((layer) => {
+            layer.remove();
+        });
+    }
+
+    function refreshPage() {
+        window.location.reload();
+    } 
+</script>
+
+<div id="infoBox">
+    <div id="leftPanel">
+        <h1 id="title">Ever heard of a little game called Forza Horizon? </h1>
+        <p>I've always found the idea of a map that shows the places you've discovered fascinating. Forza Horizon
+            implemented a map that had every road greyed out until you drove over it once. It encouraged you to drive
+            every road in the entire game, exploring the map. </p>
+        <p>I've been looking for more excuses to get out and see things I haven't seen before, so I built WhereHaveIBeen
+            to mark which areas of the "map" have already been discovered by me.</p>
+    </div>
+    <div id="rightPanel">
+        <h1 id="title">Remove Elements </h1>
+
+        <input type="button" value="Remove Route" onclick="eraseRoute()" />
+        <input type="button" value="Remove Markers" onclick="eraseMarkers()" />
+        <input type="button" value="Refresh" onclick="refreshPage()" />
+    </div>
+</div>
+
+{% endblock %}

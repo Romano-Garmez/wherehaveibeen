@@ -4,11 +4,17 @@ body {
 
 #infoBox {
     margin: 1%;
-    display: table-row
+    display: table-row;
+    padding: 1%;
 }
 
 #map {
     height: 80vh;
+    width: 100%;
+    margin-bottom: 1%;
+}
+#map-demo {
+    height: 60vh;
     width: 100%;
     margin-bottom: 1%;
 }
@@ -20,6 +26,7 @@ body {
 }
 
 #rightPanel {
+    width: 49vw;
     padding: 2%;
     display: table-cell;
 }
@@ -31,8 +38,6 @@ p {
 li {
     font-size: 1.5em;
 }
-
-
 
 /* The popup form - hidden by default */
 .form-popup {

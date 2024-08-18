@@ -9,12 +9,9 @@ app = Flask(__name__)
 def index():
     return render_template("index.html")
 
-"""Navbar replacement doesn't work if you don't host it somewhere
-
-"""
-@app.route("/navbar")
-def navbar():
-    return render_template("navbar.html")
+@app.route("/guide")
+def guide():
+    return render_template("howtouse.html")
 
 
 """Sign out by deleting cookie
