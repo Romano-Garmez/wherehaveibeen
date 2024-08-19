@@ -92,14 +92,7 @@
     }
 
     function bufferComplexRoute(latlngs) {
-        control = L.routing.control({
-            waypoints: latlngs
-                .filter((_, index) => index % qualityInverse === 0) // Filter to include only every other entry
-                .map(latlng => L.latLng(latlng[0], latlng[1])),
-            router: L.Routing.osrmv1({ serviceUrl: '/proxy' }),
-            routeWhileDragging: true,
-            createMarker: function () { return null; }, // Disable default marker
-        }).addTo(map);
+        drawRoute(latlngs);
 
         control.hide(); // Hide the route line
 
@@ -144,14 +137,7 @@
     function bufferSimpleRoute(latlngs) {
         // Draw a route connecting all points
         if (latlngs.length > 1) {
-            control = L.routing.control({
-                waypoints: latlngs
-                    .filter((_, index) => index % qualityInverse === 0) // Filter to include only every other entry
-                    .map(latlng => L.latLng(latlng[0], latlng[1])),
-                router: L.Routing.osrmv1({ serviceUrl: '/proxy/' }),
-                routeWhileDragging: true,
-                createMarker: function () { return null; }, // Disable default marker
-            }).addTo(map);
+            drawRoute(latlngs);
 
             control.hide(); // Hide the route line
 
@@ -196,7 +182,16 @@
         }
     }
 
-
+    function drawRoute(latlngs) {
+        control = L.routing.control({
+            waypoints: latlngs
+                .filter((_, index) => index % qualityInverse === 0) // Filter to include only every other entry
+                .map(latlng => L.latLng(latlng[0], latlng[1])),
+            router: L.Routing.osrmv1({ serviceUrl: '/proxy' }),
+            routeWhileDragging: true,
+            createMarker: function () { return null; }, // Disable default marker
+        }).addTo(map);
+    }
 
 
 
