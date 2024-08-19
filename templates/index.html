@@ -38,9 +38,77 @@
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
 
+    async function getUsersAndDevices() {
+        return fetch('/usersdevices')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();  // Parse the JSON from the response
+            })
+            .then(data => {
+
+                // Create sets to store unique users and devices
+                const users = new Set();
+                const devices = new Set();
+
+                // Iterate through the data and populate the sets
+                data.forEach(entry => {
+                    if (entry.username) {
+                        users.add(entry.username);
+                    }
+                    if (entry.device) {
+                        devices.add(entry.device);
+                    }
+                });
+
+                // Convert sets to arrays and sort them
+                const userList = Array.from(users);
+                const deviceList = Array.from(devices);
+
+                return { users: userList, devices: deviceList };
+            })
+            .catch(error => {
+                console.error('Error fetching data:', error);
+                return { users: [], devices: [] };
+            });
+    }
 
     //handles all data retrieval and drawing on points/routes on map
     function fetchLocations() {
+        // Get users and devices
+        getUsersAndDevices().then(usersAndDevices => {
+
+            // Access users and devices after the promise resolves
+            var users = usersAndDevices.users;
+            var devices = usersAndDevices.devices;
+
+            var select = document.getElementById("userBox");
+            select.innerHTML = '';
+
+            for (var i = 0; i < users.length; i++) {
+                var opt = users[i];
+                var el = document.createElement("option");
+                el.textContent = opt;
+                el.value = opt;
+                select.appendChild(el);
+            }
+
+            var select = document.getElementById("deviceBox");
+            select.innerHTML = '';
+
+            for (var i = 0; i < devices.length; i++) {
+                var opt = devices[i];
+                var el = document.createElement("option");
+                el.textContent = opt;
+                el.value = opt;
+                select.appendChild(el);
+            }
+        }).catch(error => {
+            console.error('Error fetching users and devices:', error);
+        });
+
+
         fetch('/locations?' + new URLSearchParams({
             startdate: document.getElementById('startBox').value,
             enddate: document.getElementById('endBox').value,
@@ -105,13 +173,12 @@
             var routeCoords = routes[0].coordinates.map(coord => [coord.lng, coord.lat]);
             var lineString = turf.lineString(routeCoords);
 
-            drawBuffer(lineString, totalDistance)
+            bufferLayer = drawBuffer(lineString, totalDistance)
+
+            // Adjust the view to show the entire buffered area
+            var bounds = bufferLayer.getBounds();
+            map.fitBounds(bounds);
         });
-
-        // Adjust the view to show the entire buffered area
-        var bounds = bufferLayer.getBounds();
-        map.fitBounds(bounds);
-
 
     }
 
@@ -129,11 +196,11 @@
             var lineString = turf.lineString(latlngs.map(latlng => [latlng[1], latlng[0]])); // [lng, lat]
 
             drawBuffer(lineString, totalDistance)
-        });
 
-        // Adjust the view to show all markers, circles, and the polyline
-        var bounds = L.latLngBounds(latlngs);
-        map.fitBounds(bounds);
+            // Adjust the view to show all markers, circles, and the polyline
+            var bounds = L.latLngBounds(latlngs);
+            map.fitBounds(bounds);
+        });
     }
 
 
@@ -164,6 +231,8 @@
                 return { color: 'rgba(0, 0, 255, 0.4)', weight: 2 };
             }
         }).addTo(map);
+
+        return bufferLayer;
     }
 
     function getCoverageStats(buffered, totalDistance) {
@@ -204,8 +273,12 @@
         <!-- MAP CONTROLS -->
         <h1>User </h1>
         <!--<form action="#" onsubmit="filterMap()">-->
-        <input type="text" id="userBox" onkeyup="" placeholder="User (ex. roman)" value="" />
-        <input type="text" id="deviceBox" onkeyup="" placeholder="Device (ex. romaniphone)" value="" />
+        <select id="userBox">
+            <option>Choose a user</option>
+        </select>
+        <select id="deviceBox">
+            <option>Choose a device</option>
+        </select>
         <input type="submit" onsubmit="filterMap()" style="display: none" />
         <!--</form>-->
         <p></p>
@@ -289,7 +362,6 @@
 </script>
 
 <script>
-    fetchLocations();
 
     function openForm() {
         document.getElementById("myForm").style.display = "block";
@@ -299,6 +371,8 @@
         document.getElementById("myForm").style.display = "none";
         document.getElementById("sign_out").style.display = "block";
     }
+
+    fetchLocations();
 
 </script>
 

@@ -110,6 +110,28 @@ def get_locations():
     except Exception as err:
         print(f"Other error occurred: {err}")
         return jsonify({"error": str(err)}), 500
+    
+@app.route("/usersdevices")
+def getUsersDevices():
+    try:
+
+        # go make the request with login info from cookie
+        response = requests.get(
+            request.cookies.get("serverurl") + "/api/0/last",
+            auth=HTTPBasicAuth(
+                request.cookies.get("username"), request.cookies.get("password")
+            ),
+        )
+        response.raise_for_status()
+        data = response.json()
+        # print(data)  # Print data to console
+        return jsonify(data)
+    except requests.HTTPError as http_err:
+        print(f"HTTP error occurred: {http_err}")
+        return jsonify({"error": str(http_err)}), 500
+    except Exception as err:
+        print(f"Other error occurred: {err}")
+        return jsonify({"error": str(err)}), 500
 
 
 """Proxy all insecure requests to the insecure server
