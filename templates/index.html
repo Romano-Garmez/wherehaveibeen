@@ -93,8 +93,7 @@
 
     function bufferComplexRoute(latlngs) {
         drawRoute(latlngs);
-
-        control.hide(); // Hide the route line
+        control.hide(); // hide top right panel
 
         // Listen for the routesfound event
         control.on('routesfound', function (e) {
@@ -102,85 +101,41 @@
             var summary = routes[0].summary; // Get the first route's summary
             var totalDistance = summary.totalDistance; // Distance in meters
 
-            // Convert distance to kilometers
-            var distanceKm = (totalDistance / 1000).toFixed(2); // Convert to km
-            document.getElementById('totalDist').innerHTML = "<p>" + distanceKm + " km</p>";
-
             // Create a lineString for buffering based on the actual route
             var routeCoords = routes[0].coordinates.map(coord => [coord.lng, coord.lat]);
             var lineString = turf.lineString(routeCoords);
 
-            // Simplify the route before buffering
-            var simplifiedLineString = turf.simplify(lineString, { tolerance: .001, highQuality: false });
-
-            // Buffer the route with Turf.js
-            var buffered = turf.buffer(simplifiedLineString, circleSize, { units: 'kilometers' });
-
-            // Convert the buffer to GeoJSON and add it to the map
-            var bufferLayer = L.geoJSON(buffered, {
-                style: function () {
-                    return { color: 'rgba(0, 0, 255, 0.4)', weight: 2 };
-                }
-            }).addTo(map);
-
-            // Adjust the view to show the entire buffered area
-            var bounds = bufferLayer.getBounds();
-            map.fitBounds(bounds);
-
-            // Calculate the total area of the route
-            var area = turf.area(buffered) / 1e6; // Convert m² to km²
-            document.getElementById('totalArea').innerHTML = "<p>" + Math.round(area * 100) / 100 + "km²" + "</p>";
-            document.getElementById('totalAreaPct').innerHTML = "<p>" + area / 863440 + "%" + "</p>";
+            drawBuffer(lineString, totalDistance)
         });
+
+        // Adjust the view to show the entire buffered area
+        var bounds = bufferLayer.getBounds();
+        map.fitBounds(bounds);
+
+
     }
 
     function bufferSimpleRoute(latlngs) {
-        // Draw a route connecting all points
-        if (latlngs.length > 1) {
-            drawRoute(latlngs);
+        drawRoute(latlngs);
+        control.hide(); // hide top right panel
 
-            control.hide(); // Hide the route line
+        // Listen for the routesfound event
+        control.on('routesfound', function (e) {
+            var routes = e.routes;
+            var summary = routes[0].summary; // Get the first route's summary
+            var totalDistance = summary.totalDistance; // Distance in meters
 
             // Create a lineString for buffering
             var lineString = turf.lineString(latlngs.map(latlng => [latlng[1], latlng[0]])); // [lng, lat]
 
-            // Buffer the route with Turf.js
-            var buffered = turf.buffer(lineString, circleSize, { units: 'kilometers' }); // 1 km buffer
+            drawBuffer(lineString, totalDistance)
+        });
 
-            // Convert the buffer to GeoJSON and add it to the map
-            var bufferLayer = L.geoJSON(buffered, {
-                style: function () {
-                    return { color: 'rgba(0, 0, 255, 0.4)', weight: 2 };
-                }
-            }).addTo(map);
-
-            // Listen for the routesfound event
-            control.on('routesfound', function (e) {
-                var routes = e.routes;
-                var summary = routes[0].summary; // Get the first route's summary
-                var totalDistance = summary.totalDistance; // Distance in meters
-
-                // Convert distance to kilometers
-                var distanceKm = (totalDistance / 1000).toFixed(2); // Convert to km
-
-                document.getElementById('totalDist').innerHTML = "<p>" + distanceKm + " km</p>";
-            });
-
-            // Adjust the view to show all markers, circles, and the polyline
-            var bounds = L.latLngBounds(latlngs);
-            map.fitBounds(bounds);
-
-            // Calculate the total area of the route
-            area = turf.area(buffered) / 1e6; // Convert m² to km²
-
-            document.getElementById('totalArea').innerHTML = "<p>" + Math.round(area * 100) / 100 + "km²" + "</p>";
-
-            document.getElementById('totalAreaPct').innerHTML = "<p>" + area / 863440 + "%" + "</p>";
-
-
-
-        }
+        // Adjust the view to show all markers, circles, and the polyline
+        var bounds = L.latLngBounds(latlngs);
+        map.fitBounds(bounds);
     }
+
 
     function drawRoute(latlngs) {
         control = L.routing.control({
@@ -191,6 +146,38 @@
             routeWhileDragging: true,
             createMarker: function () { return null; }, // Disable default marker
         }).addTo(map);
+    }
+
+    function drawBuffer(lineString, totalDistance) {
+
+        // Simplify the route before buffering
+        var simplifiedLineString = turf.simplify(lineString, { tolerance: .001, highQuality: false });
+
+        // Buffer the route with Turf.js
+        var buffered = turf.buffer(simplifiedLineString, circleSize, { units: 'kilometers' }); // 1 km buffer
+
+        getCoverageStats(buffered, totalDistance);
+
+        // Convert the buffer to GeoJSON and add it to the map
+        var bufferLayer = L.geoJSON(buffered, {
+            style: function () {
+                return { color: 'rgba(0, 0, 255, 0.4)', weight: 2 };
+            }
+        }).addTo(map);
+    }
+
+    function getCoverageStats(buffered, totalDistance) {
+        // Convert distance to kilometers
+        var distanceKm = (totalDistance / 1000).toFixed(2); // Convert to km
+
+        document.getElementById('totalDist').innerHTML = "<p>" + distanceKm + " km</p>";
+
+        // Calculate the total area of the route
+        area = turf.area(buffered) / 1e6; // Convert m² to km²
+
+        document.getElementById('totalArea').innerHTML = "<p>" + Math.round(area * 100) / 100 + "km²" + "</p>";
+
+        document.getElementById('totalAreaPct').innerHTML = "<p>" + area / 863440 + "%" + "</p>";
     }
 
 
