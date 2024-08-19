@@ -49,10 +49,14 @@ li {
     font-size: 1.5em;
 }
 
-h4 {
-   font-weight: bold;
+
+input {
+    margin-bottom: 4%;
 }
 
+select {
+    margin-bottom: 4%;
+}
 /* The popup form - hidden by default */
 .form-popup {
     /*display: none;*/

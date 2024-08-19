@@ -257,8 +257,9 @@
     </div>
     <div id="rightPanel">
         <!-- MAP CONTROLS -->
-        <h1>User </h1>
+        <h1> Filters and Settings </h1>
         <!--<form action="#" onsubmit="filterMap()">-->
+        <h4>Choose a user and device</h4>
         <select id="userBox">
             <option value="" selected disabled>Choose a user</option>
         </select>
@@ -267,37 +268,37 @@
         </select>
         <input type="submit" onsubmit="filterMap()" style="display: none" />
         <!--</form>-->
-        <p></p>
+        <br>
 
+        <h4>Choose a route computation method</h4>
         <select id="bufferMethod">
             <option value="complexRoute">Complex Route Buffer</option>
             <option value="simpleRoute">Simple Route Buffer</option>
         </select>
 
+        <br>
 
-        <h1 id="title">Remove Elements </h1>
-
+        <h4>Map settings</h4>
         <input type="button" value="Remove Route" onclick="eraseRoute()" />
-        <input type="button" value="Remove Markers" onclick="eraseMarkers()" />
-        <input type="button" value="Refresh" onclick="filterMap()" />
+        
+        <br>
 
-        <p></p>
-
-        <h1 id="title">Filter Data </h1>
+        <h4>Time frame</h4>
         <div style="float:left; width: 50%;">
-            <h4>Start Date </h4>
+            <h5>Start Date </h5>
 
             <input type="date" id="startBox" onkeyup="" name="trip-start" value="2015-01-01" min="2015-01-01"
                 max="2099-12-31" />
         </div>
         <div style="float:left; width: 50%;">
-            <h4>End Date </h4>
+            <h5>End Date </h5>
             <input type="date" id="endBox" onkeyup="" name="trip-start" value="2099-12-31" min="2015-01-01"
                 max="2099-12-31" />
         </div>
-        <p></p>
+        <br>
 
-        <input type="button" value="Submit" onclick="filterMap()" />
+        <h4>Save settings</h4>
+        <input type="button" value="Save and Apply" onclick="filterMap()" />
     </div>
 </div>
 
@@ -329,14 +330,6 @@
 
     function eraseRoute() {
         map.removeControl(control);
-    }
-
-    function eraseMarkers() {
-        map.eachLayer((layer) => {
-            if (layer instanceof L.Marker) {
-                layer.remove();
-            }
-        });
     }
 
     function eraseLayers() {
