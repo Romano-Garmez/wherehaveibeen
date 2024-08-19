@@ -4,3 +4,6 @@
 
 #Virtual environment
 .venv/
+
+#Fly config
+fly.toml
