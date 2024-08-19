@@ -53,12 +53,30 @@
                 const devices = new Set();
 
                 // Iterate through the data and populate the sets
+                var select = document.getElementById("userBox");
+                select.innerHTML = '';
+
+                var select = document.getElementById("deviceBox");
+                select.innerHTML = '';
+
                 data.forEach(entry => {
                     if (entry.username) {
+                        var select = document.getElementById("userBox");
                         users.add(entry.username);
+
+                        var el = document.createElement("option");
+                        el.textContent = entry.username;
+                        el.value = entry.username;
+                        select.appendChild(el);
                     }
                     if (entry.device) {
+                        var select = document.getElementById("deviceBox");
                         devices.add(entry.device);
+
+                        var el = document.createElement("option");
+                        el.textContent = entry.device;
+                        el.value = entry.device;
+                        select.appendChild(el);
                     }
                 });
 
@@ -66,7 +84,7 @@
                 const userList = Array.from(users);
                 const deviceList = Array.from(devices);
 
-                return { users: userList, devices: deviceList };
+                //return { users: userList, devices: deviceList };
             })
             .catch(error => {
                 console.error('Error fetching data:', error);
@@ -74,41 +92,9 @@
             });
     }
 
+
     //handles all data retrieval and drawing on points/routes on map
     function fetchLocations() {
-        // Get users and devices
-        getUsersAndDevices().then(usersAndDevices => {
-
-            // Access users and devices after the promise resolves
-            var users = usersAndDevices.users;
-            var devices = usersAndDevices.devices;
-
-            var select = document.getElementById("userBox");
-            select.innerHTML = '';
-
-            for (var i = 0; i < users.length; i++) {
-                var opt = users[i];
-                var el = document.createElement("option");
-                el.textContent = opt;
-                el.value = opt;
-                select.appendChild(el);
-            }
-
-            var select = document.getElementById("deviceBox");
-            select.innerHTML = '';
-
-            for (var i = 0; i < devices.length; i++) {
-                var opt = devices[i];
-                var el = document.createElement("option");
-                el.textContent = opt;
-                el.value = opt;
-                select.appendChild(el);
-            }
-        }).catch(error => {
-            console.error('Error fetching users and devices:', error);
-        });
-
-
         fetch('/locations?' + new URLSearchParams({
             startdate: document.getElementById('startBox').value,
             enddate: document.getElementById('endBox').value,
@@ -274,10 +260,10 @@
         <h1>User </h1>
         <!--<form action="#" onsubmit="filterMap()">-->
         <select id="userBox">
-            <option>Choose a user</option>
+            <option value="" selected disabled>Choose a user</option>
         </select>
         <select id="deviceBox">
-            <option>Choose a device</option>
+            <option value="" selected disabled>Choose a device</option>
         </select>
         <input type="submit" onsubmit="filterMap()" style="display: none" />
         <!--</form>-->
@@ -372,7 +358,10 @@
         document.getElementById("sign_out").style.display = "block";
     }
 
-    fetchLocations();
+    //find users and devices, then calculate route for the first entry
+    getUsersAndDevices().then(usersAndDevices => {
+        fetchLocations();
+    });
 
 </script>
 
