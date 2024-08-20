@@ -8,11 +8,6 @@ body {
     padding: 1%;
 }
 
-#infoPanel {
-    margin: 1%;
-    padding: 5%;
-}
-
 #map {
     height: 80vh;
     width: 100%;
@@ -61,7 +56,7 @@ select {
 .form-popup {
     /*display: none;*/
     position: absolute;
-    top: 50px;
+    top: 70px;
     right: 0px;
     background-color: #4870AF;
     z-index: 10000;
@@ -69,6 +64,10 @@ select {
 
     border-bottom-left-radius: 10px;
     border-bottom-right-radius: 10px;
+}
+
+.form-popup h3 {
+    color: white;
 }
 
 /* Add styles to the form container */
@@ -83,7 +82,7 @@ select {
 .form-container input[type=password],
 .form-container input[type=server-url] {
     width: 100%;
-    padding: 15px;
+    padding: 10px;
     margin: 5px 0 22px 0;
     border: none;
     background: #f1f1f1;
@@ -97,16 +96,19 @@ select {
     outline: none;
 }
 
-/* Set a style for the submit/login button */
-.form-container .btn {
+.btn {
     background-color: #04AA6D;
     color: white;
     padding: 16px 20px;
-    border: none;
-    cursor: pointer;
     width: 100%;
     margin-bottom: 10px;
     opacity: 0.8;
+    font-size: larger;
+}
+
+.btn:hover {
+    opacity: 1;
+    background-color: #FFF;
 }
 
 /* Add a red background color to the cancel button */
