@@ -9,9 +9,11 @@ app = Flask(__name__)
 def index():
     return render_template("index.html")
 
+
 @app.route("/about")
 def guide():
     return render_template("about.html")
+
 
 @app.route("/setup")
 def setup():
@@ -81,16 +83,12 @@ def get_locations():
 
         if startDate:
             params["from"] = startDate + "T01:00:00.000Z"
-            print(params["from"])
         if endDate:
             params["to"] = endDate + "T23:59:59.000Z"
-            print(params["to"])
         if user:
             params["user"] = user
-            print(params["user"])
         if device:
             params["device"] = device
-            print(params["device"])
 
         # go make the request with login info from cookie
         response = requests.get(
@@ -105,12 +103,13 @@ def get_locations():
         # print(data)  # Print data to console
         return jsonify(data)
     except requests.HTTPError as http_err:
-        print(f"HTTP error occurred: {http_err}")
+        print(f"Locations: HTTP error occurred: {http_err}")
         return jsonify({"error": str(http_err)}), 500
     except Exception as err:
-        print(f"Other error occurred: {err}")
+        print(f"Locations: Other error occurred: {err}")
         return jsonify({"error": str(err)}), 500
-    
+
+
 @app.route("/usersdevices")
 def getUsersDevices():
     try:
@@ -127,10 +126,10 @@ def getUsersDevices():
         # print(data)  # Print data to console
         return jsonify(data)
     except requests.HTTPError as http_err:
-        print(f"HTTP error occurred: {http_err}")
+        print(f"UsersAndDevices: HTTP error occurred: {http_err}")
         return jsonify({"error": str(http_err)}), 500
     except Exception as err:
-        print(f"Other error occurred: {err}")
+        print(f"UsersAndDevices: Other error occurred: {err}")
         return jsonify({"error": str(err)}), 500
 
 
@@ -168,4 +167,5 @@ if __name__ == "__main__":
 
     from waitress import serve
 
+    print("Server running on http://127.0.0.1:5000")
     serve(app, host="0.0.0.0", port=5000)

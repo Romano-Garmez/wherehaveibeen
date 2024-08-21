@@ -42,7 +42,7 @@
         return fetch('/usersdevices')
             .then(response => {
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    throw new Error(`Error fetching users and devices. Are you logged in?`);
                 }
                 return response.json();  // Parse the JSON from the response
             })
@@ -87,9 +87,10 @@
                 //return { users: userList, devices: deviceList };
             })
             .catch(error => {
-                console.error('Error fetching data:', error);
+                console.error('Fetch users and devices error:', error);
                 return { users: [], devices: [] };
             });
+
     }
 
 
@@ -103,7 +104,7 @@
         }).toString())
             .then(response => {
                 if (!response.ok) {
-                    throw new Error('Network response was not ok');
+                    throw new Error('Error fetching location data+Are you logged in?');
                 }
                 return response.json();
             })
@@ -141,7 +142,7 @@
                 }
             })
             .catch(error => {
-                console.error('Fetch error:', error);
+                console.error('Fetch location error:', error);
             });
     }
 
@@ -351,10 +352,12 @@
         document.getElementById("sign_out").style.display = "block";
     }
 
+
     //find users and devices, then calculate route for the first entry
     getUsersAndDevices().then(usersAndDevices => {
         fetchLocations();
     });
+
 
 </script>
 
