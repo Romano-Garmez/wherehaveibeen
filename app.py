@@ -111,7 +111,7 @@ def get_locations():
 
 
 @app.route("/usersdevices")
-def getUsersDevices():
+def get_users_devices():
     try:
 
         # go make the request with login info from cookie

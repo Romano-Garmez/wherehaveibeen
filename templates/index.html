@@ -48,21 +48,17 @@
             })
             .then(data => {
 
-                // Create sets to store unique users and devices
-                const users = new Set();
-                const devices = new Set();
 
                 // Iterate through the data and populate the sets
                 var select = document.getElementById("userBox");
                 select.innerHTML = '';
 
-                var select = document.getElementById("deviceBox");
+                select = document.getElementById("deviceBox");
                 select.innerHTML = '';
 
                 data.forEach(entry => {
                     if (entry.username) {
-                        var select = document.getElementById("userBox");
-                        users.add(entry.username);
+                        select = document.getElementById("userBox");
 
                         var el = document.createElement("option");
                         el.textContent = entry.username;
@@ -70,8 +66,7 @@
                         select.appendChild(el);
                     }
                     if (entry.device) {
-                        var select = document.getElementById("deviceBox");
-                        devices.add(entry.device);
+                        select = document.getElementById("deviceBox");
 
                         var el = document.createElement("option");
                         el.textContent = entry.device;
@@ -80,11 +75,6 @@
                     }
                 });
 
-                // Convert sets to arrays and sort them
-                const userList = Array.from(users);
-                const deviceList = Array.from(devices);
-
-                //return { users: userList, devices: deviceList };
             })
             .catch(error => {
                 console.error('Fetch users and devices error:', error);
@@ -160,7 +150,7 @@
             var routeCoords = routes[0].coordinates.map(coord => [coord.lng, coord.lat]);
             var lineString = turf.lineString(routeCoords);
 
-            bufferLayer = drawBuffer(lineString, totalDistance)
+            var bufferLayer = drawBuffer(lineString, totalDistance)
 
             // Adjust the view to show the entire buffered area
             var bounds = bufferLayer.getBounds();
@@ -229,7 +219,7 @@
         document.getElementById('totalDist').innerHTML = "<p>" + Math.round(distanceKm * 100) / 100 + "km or " + Math.round((distanceKm / 1.609) * 100) / 100 + "mi</p>";
 
         // Calculate the total area of the route
-        area = turf.area(buffered) / 1e6; // Convert m² to km²
+        var area = turf.area(buffered) / 1e6; // Convert m² to km²
 
         document.getElementById('totalArea').innerHTML = "<p>" + Math.round(area * 100) / 100 + "km² or " + Math.round((area / 1.609) * 100) / 100 + "mi²</p>";
 
@@ -259,8 +249,8 @@
     <div id="rightPanel">
         <!-- MAP CONTROLS -->
         <h1> Filters and Settings </h1>
-        <!--<form action="#" onsubmit="filterMap()">-->
         <h4>Choose a user and device</h4>
+
         <select id="userBox">
             <option value="" selected disabled>Choose a user</option>
         </select>
@@ -268,7 +258,6 @@
             <option value="" selected disabled>Choose a device</option>
         </select>
         <input type="submit" onsubmit="filterMap()" style="display: none" />
-        <!--</form>-->
         <br>
 
         <h4>Choose a route computation method</h4>
