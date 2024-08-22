@@ -54,7 +54,6 @@ select {
 }
 /* The popup form - hidden by default */
 .form-popup {
-    /*display: none;*/
     position: absolute;
     top: 70px;
     right: 0px;

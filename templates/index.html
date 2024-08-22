@@ -56,11 +56,13 @@
                 select = document.getElementById("deviceBox");
                 select.innerHTML = '';
 
+                var el;
+
                 data.forEach(entry => {
                     if (entry.username) {
                         select = document.getElementById("userBox");
 
-                        var el = document.createElement("option");
+                        el = document.createElement("option");
                         el.textContent = entry.username;
                         el.value = entry.username;
                         select.appendChild(el);
@@ -68,7 +70,7 @@
                     if (entry.device) {
                         select = document.getElementById("deviceBox");
 
-                        var el = document.createElement("option");
+                        el = document.createElement("option");
                         el.textContent = entry.device;
                         el.value = entry.device;
                         select.appendChild(el);

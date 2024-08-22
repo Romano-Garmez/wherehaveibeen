@@ -59,8 +59,6 @@
         // Listen for the routesfound event
         control.on('routesfound', function (e) {
             var routes = e.routes;
-            var summary = routes[0].summary;
-            var totalDistance = summary.totalDistance;
 
             // Create a lineString for buffering based on the actual route
             var routeCoords = routes[0].coordinates.map(coord => [coord.lng, coord.lat]);

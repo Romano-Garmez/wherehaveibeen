@@ -76,15 +76,15 @@ def get_locations():
         }
 
         # get filters from query
-        startDate = request.args.get("startdate")
-        endDate = request.args.get("enddate")
+        start_date = request.args.get("startdate")
+        end_date = request.args.get("enddate")
         user = request.args.get("user")
         device = request.args.get("device")
 
-        if startDate:
-            params["from"] = startDate + "T01:00:00.000Z"
-        if endDate:
-            params["to"] = endDate + "T23:59:59.000Z"
+        if start_date:
+            params["from"] = start_date + "T01:00:00.000Z"
+        if end_date:
+            params["to"] = end_date + "T23:59:59.000Z"
         if user:
             params["user"] = user
         if device:
