@@ -145,14 +145,12 @@
         // Listen for the routesfound event
         control.on('routesfound', function (e) {
             var routes = e.routes;
-            var summary = routes[0].summary; // Get the first route's summary
-            var totalDistance = summary.totalDistance; // Distance in meters
 
             // Create a lineString for buffering based on the actual route
             var routeCoords = routes[0].coordinates.map(coord => [coord.lng, coord.lat]);
             var lineString = turf.lineString(routeCoords);
 
-            var bufferLayer = drawBuffer(lineString, totalDistance)
+            var bufferLayer = drawBuffer(lineString)
 
             // Adjust the view to show the entire buffered area
             var bounds = bufferLayer.getBounds();
@@ -162,24 +160,15 @@
     }
 
     function bufferSimpleRoute(latlngs) {
-        drawRoute(latlngs);
-        control.hide(); // hide top right panel
 
-        // Listen for the routesfound event
-        control.on('routesfound', function (e) {
-            var routes = e.routes;
-            var summary = routes[0].summary; // Get the first route's summary
-            var totalDistance = summary.totalDistance; // Distance in meters
+        // Create a lineString for buffering
+        var lineString = turf.lineString(latlngs.map(latlng => [latlng[1], latlng[0]])); // [lng, lat]
 
-            // Create a lineString for buffering
-            var lineString = turf.lineString(latlngs.map(latlng => [latlng[1], latlng[0]])); // [lng, lat]
+        drawBuffer(lineString)
 
-            drawBuffer(lineString, totalDistance)
-
-            // Adjust the view to show all markers, circles, and the polyline
-            var bounds = L.latLngBounds(latlngs);
-            map.fitBounds(bounds);
-        });
+        // Adjust the view to show all markers, circles, and the polyline
+        var bounds = L.latLngBounds(latlngs);
+        map.fitBounds(bounds);
     }
 
 
@@ -194,7 +183,7 @@
         }).addTo(map);
     }
 
-    function drawBuffer(lineString, totalDistance) {
+    function drawBuffer(lineString) {
 
         // Simplify the route before buffering
         var simplifiedLineString = turf.simplify(lineString, { tolerance: .001, highQuality: false });
@@ -202,7 +191,9 @@
         // Buffer the route with Turf.js
         var buffered = turf.buffer(simplifiedLineString, circleSize, { units: 'kilometers' }); // 1 km buffer
 
-        getCoverageStats(buffered, totalDistance);
+
+        getCoverageStats(buffered, simplifiedLineString);
+
 
         // Convert the buffer to GeoJSON and add it to the map
         var bufferLayer = L.geoJSON(buffered, {
@@ -214,9 +205,9 @@
         return bufferLayer;
     }
 
-    function getCoverageStats(buffered, totalDistance) {
+    function getCoverageStats(buffered, lineString) {
         // Convert distance to kilometers
-        var distanceKm = (totalDistance / 1000).toFixed(2); // Convert to km
+        var distanceKm = turf.length(lineString, { units: 'kilometers' }); // Total distance in kilometers
 
         document.getElementById('totalDist').innerHTML = "<p>" + Math.round(distanceKm * 100) / 100 + "km or " + Math.round((distanceKm / 1.609) * 100) / 100 + "mi</p>";
 
