@@ -13,6 +13,7 @@ body {
     width: 100%;
     margin-bottom: 1%;
 }
+
 #map-demo {
     height: 60vh;
     width: 100%;
@@ -35,6 +36,10 @@ p {
     font-size: 1.5em;
 }
 
+.settingInfo {
+    font-size: 1em;
+}
+
 a {
     color: #4870AF;
     font-size: 1.5em;
@@ -52,6 +57,7 @@ input {
 select {
     margin-bottom: 4%;
 }
+
 /* The popup form - hidden by default */
 .form-popup {
     position: absolute;
@@ -142,7 +148,7 @@ select {
 
 .active,
 .navbar ul li a:hover {
-  color: #FFF !important;
+    color: #FFF !important;
 }
 
 #sign_out {

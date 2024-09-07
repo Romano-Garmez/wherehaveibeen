@@ -250,6 +250,8 @@
         <!-- MAP CONTROLS -->
         <h1> Filters and Settings </h1>
         <h4>Choose a user and device</h4>
+        <p class="settingInfo">Choose which device to track. This is your OwnTracks user and device.</p>
+
 
         <select id="userBox">
             <option value="" selected disabled>Choose a user</option>
@@ -261,6 +263,7 @@
         <br>
 
         <h4>Choose a route computation method</h4>
+        <p class="settingInfo">Choosing the "Complex Route" computation method tends to be more accurate, but slower to calculate and can fail on large datasets. The "Simple Route" computation method should work in almost all scenarios.</p>
         <select id="bufferMethod">
             <option value="complexRoute">Complex Route Buffer</option>
             <option value="simpleRoute">Simple Route Buffer</option>
@@ -269,11 +272,14 @@
         <br>
 
         <h4>Map settings</h4>
+        <p class="settingInfo">Hide the route drawn on the map.</p>
+
         <input type="button" value="Remove Route" onclick="eraseRoute()" />
 
         <br>
 
         <h4>Time frame</h4>
+        <p class="settingInfo">Filter the map to only shows GPS data between these two dates.</p>
         <div style="float:left; width: 50%;">
             <h5>Start Date </h5>
 
