@@ -112,10 +112,17 @@
                         if (feature.geometry && feature.geometry.coordinates) {
                             const [lng, lat] = feature.geometry.coordinates;
                             // Add coordinates to the array
-                            latlngs.push([lat, lng]);
-                            // Add marker to the map
-                            //L.marker([lat, lng]).addTo(map)
-                            //.bindPopup(`<b>${feature.properties.name}</b><br>Velocity: ${feature.properties.vel} km/h`);
+
+                            //markers with velocity of zero tend to be very inaccurate, skip them
+                            if (feature.properties.vel > 0) {
+                                latlngs.push([lat, lng]);
+                                
+                                
+                                // Add marker to the map (recommended only for small datasets, quite laggy)
+                                // L.marker([lat, lng]).addTo(map)
+                                //     .bindPopup(`<b>${feature.properties.name}</b><br>Velocity: ${feature.properties.vel} km/h`);
+                            }
+
                         }
                     });
 
