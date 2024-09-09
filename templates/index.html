@@ -204,7 +204,7 @@
                 .filter((_, index) => index % qualityInverse === 0) // Filter to include only every other entry
                 .map(latlng => L.latLng(latlng[0], latlng[1])),
             router: L.Routing.osrmv1({ serviceUrl: '/proxy' }),
-            routeWhileDragging: true,
+            routeWhileDragging: false,
             createMarker: function () { return null; }, // Disable default marker
         }).addTo(map);
 
@@ -216,10 +216,10 @@
         let start = Date.now();
 
         // Simplify the route before buffering
-        var simplifiedLineString = turf.simplify(lineString, { tolerance: .001, highQuality: false });
+        var simplifiedLineString = turf.simplify(lineString, { tolerance: .01, highQuality: false });
 
         // Buffer the route with Turf.js
-        var buffered = turf.buffer(simplifiedLineString, circleSize, { units: 'kilometers' }); // 1 km buffer
+        var buffered = turf.buffer(simplifiedLineString, circleSize, { units: 'kilometers', steps: 3 }); // 1 km buffer
 
 
         getCoverageStats(buffered, simplifiedLineString);
@@ -239,6 +239,8 @@
     }
 
     function getCoverageStats(buffered, lineString) {
+        let start = Date.now();
+
         // Convert distance to kilometers
         var distanceKm = turf.length(lineString, { units: 'kilometers' }); // Total distance in kilometers
 
@@ -250,6 +252,9 @@
         document.getElementById('totalArea').innerHTML = "<p>" + Math.round(area * 100) / 100 + "km² or " + Math.round((area / 1.609) * 100) / 100 + "mi²</p>";
 
         document.getElementById('totalAreaPct').innerHTML = "<p>" + area / 863440 + "%" + "</p>";
+
+        let timeTaken = Date.now() - start;
+        console.log("Coverage stats time taken : " + timeTaken + " milliseconds");
     }
 
 
