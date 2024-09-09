@@ -77,10 +77,12 @@
                     }
                 });
 
+                return 0;
+
             })
             .catch(error => {
                 console.error('Fetch users and devices error:', error);
-                return { users: [], devices: [] };
+                return -1;
             });
 
     }
@@ -376,7 +378,12 @@
 
     //find users and devices, then calculate route for the first entry
     getUsersAndDevices().then(usersAndDevices => {
-        fetchLocations();
+
+        // if no users, not logged in
+        if (usersAndDevices != -1) {
+            fetchLocations();
+        }
+
     });
 
 
