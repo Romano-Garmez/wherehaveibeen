@@ -88,6 +88,8 @@
 
     //handles all data retrieval and drawing on points/routes on map
     function fetchLocations() {
+        let start = Date.now();
+
         fetch('/locations?' + new URLSearchParams({
             startdate: document.getElementById('startBox').value,
             enddate: document.getElementById('endBox').value,
@@ -116,8 +118,8 @@
                             //markers with velocity of zero tend to be very inaccurate, skip them
                             if (feature.properties.vel > 0) {
                                 latlngs.push([lat, lng]);
-                                
-                                
+
+
                                 // Add marker to the map (recommended only for small datasets, quite laggy)
                                 // L.marker([lat, lng]).addTo(map)
                                 //     .bindPopup(`<b>${feature.properties.name}</b><br>Velocity: ${feature.properties.vel} km/h`);
@@ -128,6 +130,9 @@
 
                     // Get selected buffering method
                     var bufferingMethod = document.getElementById('bufferMethod').value;
+
+                    let timeTaken = Date.now() - start;
+                    console.log("Fetching locations time taken : " + timeTaken + " milliseconds");
 
                     if (latlngs.length > 1) {
                         if (bufferingMethod === 'complexRoute') {
@@ -146,6 +151,8 @@
     }
 
     function bufferComplexRoute(latlngs) {
+        let start = Date.now();
+
         drawRoute(latlngs);
         control.hide(); // hide top right panel
 
@@ -164,9 +171,14 @@
             map.fitBounds(bounds);
         });
 
+        let timeTaken = Date.now() - start;
+        console.log("Complex route time taken : " + timeTaken + " milliseconds");
+
     }
 
     function bufferSimpleRoute(latlngs) {
+        let start = Date.now();
+
 
         // Create a lineString for buffering
         var lineString = turf.lineString(latlngs.map(latlng => [latlng[1], latlng[0]])); // [lng, lat]
@@ -176,10 +188,15 @@
         // Adjust the view to show all markers, circles, and the polyline
         var bounds = L.latLngBounds(latlngs);
         map.fitBounds(bounds);
+
+        let timeTaken = Date.now() - start;
+        console.log("Simple route time taken : " + timeTaken + " milliseconds");
     }
 
 
     function drawRoute(latlngs) {
+        let start = Date.now();
+
         control = L.routing.control({
             waypoints: latlngs
                 .filter((_, index) => index % qualityInverse === 0) // Filter to include only every other entry
@@ -188,9 +205,13 @@
             routeWhileDragging: true,
             createMarker: function () { return null; }, // Disable default marker
         }).addTo(map);
+
+        let timeTaken = Date.now() - start;
+        console.log("Draw route time taken : " + timeTaken + " milliseconds");
     }
 
     function drawBuffer(lineString) {
+        let start = Date.now();
 
         // Simplify the route before buffering
         var simplifiedLineString = turf.simplify(lineString, { tolerance: .001, highQuality: false });
@@ -208,6 +229,9 @@
                 return { color: 'rgba(0, 0, 255, 0.4)', weight: 2 };
             }
         }).addTo(map);
+
+        let timeTaken = Date.now() - start;
+        console.log("Buffer drawing time taken : " + timeTaken + " milliseconds");
 
         return bufferLayer;
     }
@@ -263,7 +287,9 @@
         <br>
 
         <h4>Choose a route computation method</h4>
-        <p class="settingInfo">Choosing the "Complex Route" computation method tends to be more accurate, but slower to calculate and can fail on large datasets. The "Simple Route" computation method should work in almost all scenarios.</p>
+        <p class="settingInfo">Choosing the "Complex Route" computation method tends to be more accurate, but slower to
+            calculate and can fail on large datasets. The "Simple Route" computation method should work in almost all
+            scenarios.</p>
         <select id="bufferMethod">
             <option value="complexRoute">Complex Route Buffer</option>
             <option value="simpleRoute">Simple Route Buffer</option>
@@ -272,7 +298,7 @@
         <br>
 
         <h4>Map settings</h4>
-        <p class="settingInfo">Hide the route drawn on the map.</p>
+        <p class="settingInfo">Hide the red route drawn on the map.</p>
 
         <input type="button" value="Remove Route" onclick="eraseRoute()" />
 
