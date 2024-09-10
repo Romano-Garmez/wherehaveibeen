@@ -8,6 +8,10 @@ body {
     padding: 1%;
 }
 
+#infoPanel{
+    margin: 5%;
+}
+
 #map {
     height: 80vh;
     width: 100%;

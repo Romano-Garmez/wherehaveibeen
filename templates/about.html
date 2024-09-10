@@ -50,7 +50,7 @@
         control = L.Routing.control({
             waypoints: latlngs.map(latlng => L.latLng(latlng[0], latlng[1])),
             router: L.Routing.osrmv1({ serviceUrl: '/proxy' }), // Using public OSRM service for demo
-            routeWhileDragging: true,
+            routeWhileDragging: false,
             createMarker: function () { return null; }, // Disable default marker
         }).addTo(map);
 

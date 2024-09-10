@@ -112,6 +112,11 @@
                     // Create an array to hold the coordinates
                     var latlngs = [];
 
+                    //console.log(data.features[0]);
+
+                    var highestAltitude = 0;
+                    var highestVelocity = 0;
+
                     data.features.forEach(feature => {
                         if (feature.geometry && feature.geometry.coordinates) {
                             const [lng, lat] = feature.geometry.coordinates;
@@ -121,6 +126,13 @@
                             if (feature.properties.vel > 0) {
                                 latlngs.push([lat, lng]);
 
+                                if (feature.properties.alt > highestAltitude) {
+                                    highestAltitude = feature.properties.alt;
+                                }
+                                if (feature.properties.vel > highestVelocity) {
+                                    highestVelocity = feature.properties.vel;
+                                }
+
 
                                 // Add marker to the map (recommended only for small datasets, quite laggy)
                                 // L.marker([lat, lng]).addTo(map)
@@ -129,6 +141,8 @@
 
                         }
                     });
+
+                    getOwntracksStats(data.features, highestAltitude, highestVelocity);
 
                     // Get selected buffering method
                     var bufferingMethod = document.getElementById('bufferMethod').value;
@@ -257,6 +271,20 @@
         console.log("Coverage stats time taken : " + timeTaken + " milliseconds");
     }
 
+    function getOwntracksStats(datafeatures, highestAltitude, highestVelocity) {
+        //start date
+        console.log("Start date of OwnTracks data is " + datafeatures[0].properties.isotst.substring(0, 10));
+
+        //total gps points
+        console.log("Total number of OwnTracks data points is " + datafeatures.length);
+
+        //highest altitude
+        document.getElementById('highestAltitude').innerHTML = "<p>" + highestAltitude + "m or " + Math.round((highestAltitude * 3.281) * 100) / 100 + "ft</p>";
+
+        //highest velocity
+        document.getElementById('highestVelocity').innerHTML = "<p>" + highestVelocity + "kmh or " + Math.round((highestVelocity / 1.609) * 100) / 100 + "mph</p>";
+    }
+
 
 
 </script>
@@ -265,7 +293,7 @@
     <div id="leftPanel">
         <!-- MAP INFO -->
         <h1 id="title">Information </h1>
-        <p> This map shows the location of the devices that are sending their location data to the Owntracks server.
+        <p> This map shows the location history of the devices that are sending their location data to the Owntracks server. Learn more on the about page.
         </p>
 
         <h4>Total distance driven </h4>
@@ -276,10 +304,20 @@
 
         <h4>Percentage of west coast covered </h4>
         <div id="totalAreaPct"></div>
+
+        <h4>Highest Altitude</h4>
+        <div id="highestAltitude"></div>
+
+        <h4>Highest Velocity</h4>
+        <div id="highestVelocity"></div>
     </div>
     <div id="rightPanel">
         <!-- MAP CONTROLS -->
         <h1> Filters and Settings </h1>
+        <p class="settingInfo">Is your data showing incorrectly on the map? Try adjusting these settings. Make sure the
+            user and device are correct, and try changing the route computation method or time frame if it's too much
+            data.</p>
+
         <h4>Choose a user and device</h4>
         <p class="settingInfo">Choose which device to track. This is your OwnTracks user and device.</p>
 
@@ -305,7 +343,8 @@
         <br>
 
         <h4>Map settings</h4>
-        <p class="settingInfo">Hide the red route drawn on the map.</p>
+        <p class="settingInfo">Hide the red route drawn on the map. The route is only drawn when using the "Complex
+            Route" computation setting.</p>
 
         <input type="button" value="Remove Route" onclick="eraseRoute()" />
 
