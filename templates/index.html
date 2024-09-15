@@ -112,19 +112,23 @@
                     // Create an array to hold the coordinates
                     var latlngs = [];
 
-                    //console.log(data.features[0]);
+                    console.log(data.features[0]);
 
                     var highestAltitude = 0;
                     var highestVelocity = 0;
 
+                    // filter out bad data points
                     data.features.forEach(feature => {
                         if (feature.geometry && feature.geometry.coordinates) {
                             const [lng, lat] = feature.geometry.coordinates;
                             // Add coordinates to the array
 
-                            //markers with velocity of zero tend to be very inaccurate, skip them
-                            if (feature.properties.vel > 0) {
+                            //markers with velocity of zero and high acceleration tend to be very inaccurate, skip them
+                            if (feature.properties.vel > 5) { //feature.properties.vel > 5 || feature.properties.vel == 0 && feature.properties.acc < 100
+
                                 latlngs.push([lat, lng]);
+
+
 
                                 if (feature.properties.alt > highestAltitude) {
                                     highestAltitude = feature.properties.alt;
@@ -133,10 +137,15 @@
                                     highestVelocity = feature.properties.vel;
                                 }
 
-
                                 // Add marker to the map (recommended only for small datasets, quite laggy)
                                 // L.marker([lat, lng]).addTo(map)
-                                //     .bindPopup(`<b>${feature.properties.name}</b><br>Velocity: ${feature.properties.vel} km/h`);
+                                //     .bindPopup(`<b>${feature.properties.name}</b><br>Velocity: ${feature.properties.vel} km/h` +
+                                //         `<br>Altitude: ${feature.properties.alt} m` +
+                                //         `<br>Acceleration: ${feature.properties.acc} m/s²` +
+                                //         `<br>Time: ${feature.properties.isotst}`);
+                            } else {
+
+                                //console.log("Skipping inaccurate data point with velocity " + feature.properties.vel + " and acceleration " + feature.properties.acc);
                             }
 
                         }
@@ -293,7 +302,8 @@
     <div id="leftPanel">
         <!-- MAP INFO -->
         <h1 id="title">Information </h1>
-        <p> This map shows the location history of the devices that are sending their location data to the Owntracks server. Learn more on the about page.
+        <p> This map shows the location history of the devices that are sending their location data to the Owntracks
+            server. Learn more on the about page.
         </p>
 
         <h4>Total distance driven </h4>
