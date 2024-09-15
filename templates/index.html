@@ -38,57 +38,10 @@
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
 
-    async function getUsersAndDevices() {
-        return fetch('/usersdevices')
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`Error fetching users and devices. Are you logged in?`);
-                }
-                return response.json();  // Parse the JSON from the response
-            })
-            .then(data => {
 
-
-                // Iterate through the data and populate the sets
-                var select = document.getElementById("userBox");
-                select.innerHTML = '';
-
-                select = document.getElementById("deviceBox");
-                select.innerHTML = '';
-
-                var el;
-
-                data.forEach(entry => {
-                    if (entry.username) {
-                        select = document.getElementById("userBox");
-
-                        el = document.createElement("option");
-                        el.textContent = entry.username;
-                        el.value = entry.username;
-                        select.appendChild(el);
-                    }
-                    if (entry.device) {
-                        select = document.getElementById("deviceBox");
-
-                        el = document.createElement("option");
-                        el.textContent = entry.device;
-                        el.value = entry.device;
-                        select.appendChild(el);
-                    }
-                });
-
-                return 0;
-
-            })
-            .catch(error => {
-                console.error('Fetch users and devices error:', error);
-                return -1;
-            });
-
-    }
-
-
-    //handles all data retrieval and drawing on points/routes on map
+    /**
+     * Fetch the users and devices from the server. This function is called after get user and device data succeeds. It attempts to pull the GPS data from the OwnTracks server and calls other methods to draw and handle extra details.
+     */
     function fetchLocations() {
         let start = Date.now();
 
@@ -110,48 +63,9 @@
 
                 if (data.features && Array.isArray(data.features)) {
                     // Create an array to hold the coordinates
-                    var latlngs = [];
+                    var latlngs = filterData(data);
 
-                    console.log(data.features[0]);
-
-                    var highestAltitude = 0;
-                    var highestVelocity = 0;
-
-                    // filter out bad data points
-                    data.features.forEach(feature => {
-                        if (feature.geometry && feature.geometry.coordinates) {
-                            const [lng, lat] = feature.geometry.coordinates;
-                            // Add coordinates to the array
-
-                            //markers with velocity of zero and high acceleration tend to be very inaccurate, skip them
-                            if (feature.properties.vel > 5) { //feature.properties.vel > 5 || feature.properties.vel == 0 && feature.properties.acc < 100
-
-                                latlngs.push([lat, lng]);
-
-
-
-                                if (feature.properties.alt > highestAltitude) {
-                                    highestAltitude = feature.properties.alt;
-                                }
-                                if (feature.properties.vel > highestVelocity) {
-                                    highestVelocity = feature.properties.vel;
-                                }
-
-                                // Add marker to the map (recommended only for small datasets, quite laggy)
-                                // L.marker([lat, lng]).addTo(map)
-                                //     .bindPopup(`<b>${feature.properties.name}</b><br>Velocity: ${feature.properties.vel} km/h` +
-                                //         `<br>Altitude: ${feature.properties.alt} m` +
-                                //         `<br>Acceleration: ${feature.properties.acc} m/s²` +
-                                //         `<br>Time: ${feature.properties.isotst}`);
-                            } else {
-
-                                //console.log("Skipping inaccurate data point with velocity " + feature.properties.vel + " and acceleration " + feature.properties.acc);
-                            }
-
-                        }
-                    });
-
-                    getOwntracksStats(data.features, highestAltitude, highestVelocity);
+                    getOwntracksStats(data.features, getHighestAltitude(), getHighestVelocity());
 
                     // Get selected buffering method
                     var bufferingMethod = document.getElementById('bufferMethod').value;
@@ -175,11 +89,15 @@
             });
     }
 
+    /**
+     * Draw the route on the map and buffer it using the complex route method. The complex route method uses the Leaflet Routing Machine to calculate the route and then buffers it using Turf.js.
+     * @param {Object} data - The data to filter
+     * @returns {Array} - The filtered data
+     */
     function bufferComplexRoute(latlngs) {
         let start = Date.now();
 
         drawRoute(latlngs);
-        control.hide(); // hide top right panel
 
         // Listen for the routesfound event
         control.on('routesfound', function (e) {
@@ -201,9 +119,13 @@
 
     }
 
+    /**
+     * Draw the route on the map and buffer it using the simple route method. The simple route method uses Turf.js to buffer the route without calculating the route.
+     * @param {Object} data - The data to filter
+     * @returns {Array} - The filtered data
+     */
     function bufferSimpleRoute(latlngs) {
         let start = Date.now();
-
 
         // Create a lineString for buffering
         var lineString = turf.lineString(latlngs.map(latlng => [latlng[1], latlng[0]])); // [lng, lat]
@@ -218,7 +140,10 @@
         console.log("Simple route time taken : " + timeTaken + " milliseconds");
     }
 
-
+    /**
+     * Draw the route on the map using Leaflet Routing Machine.
+     * @param {Array} latlngs - The gps points to draw the route with
+     */
     function drawRoute(latlngs) {
         let start = Date.now();
 
@@ -231,10 +156,16 @@
             createMarker: function () { return null; }, // Disable default marker
         }).addTo(map);
 
+        control.hide(); // hide top right panel
         let timeTaken = Date.now() - start;
         console.log("Draw route time taken : " + timeTaken + " milliseconds");
     }
 
+    /**
+     * Draw a buffer around the route using Turf.js.
+     * @param {Object} lineString - The lineString to buffer
+     * @returns {Object} - The buffer layer
+     */
     function drawBuffer(lineString) {
         let start = Date.now();
 
@@ -260,41 +191,6 @@
 
         return bufferLayer;
     }
-
-    function getCoverageStats(buffered, lineString) {
-        let start = Date.now();
-
-        // Convert distance to kilometers
-        var distanceKm = turf.length(lineString, { units: 'kilometers' }); // Total distance in kilometers
-
-        document.getElementById('totalDist').innerHTML = "<p>" + Math.round(distanceKm * 100) / 100 + "km or " + Math.round((distanceKm / 1.609) * 100) / 100 + "mi</p>";
-
-        // Calculate the total area of the route
-        var area = turf.area(buffered) / 1e6; // Convert m² to km²
-
-        document.getElementById('totalArea').innerHTML = "<p>" + Math.round(area * 100) / 100 + "km² or " + Math.round((area / 1.609) * 100) / 100 + "mi²</p>";
-
-        document.getElementById('totalAreaPct').innerHTML = "<p>" + area / 863440 + "%" + "</p>";
-
-        let timeTaken = Date.now() - start;
-        console.log("Coverage stats time taken : " + timeTaken + " milliseconds");
-    }
-
-    function getOwntracksStats(datafeatures, highestAltitude, highestVelocity) {
-        //start date
-        console.log("Start date of OwnTracks data is " + datafeatures[0].properties.isotst.substring(0, 10));
-
-        //total gps points
-        console.log("Total number of OwnTracks data points is " + datafeatures.length);
-
-        //highest altitude
-        document.getElementById('highestAltitude').innerHTML = "<p>" + highestAltitude + "m or " + Math.round((highestAltitude * 3.281) * 100) / 100 + "ft</p>";
-
-        //highest velocity
-        document.getElementById('highestVelocity').innerHTML = "<p>" + highestVelocity + "kmh or " + Math.round((highestVelocity / 1.609) * 100) / 100 + "mph</p>";
-    }
-
-
 
 </script>
 
@@ -338,7 +234,7 @@
         <select id="deviceBox">
             <option value="" selected disabled>Choose a device</option>
         </select>
-        <input type="submit" onsubmit="filterMap()" style="display: none" />
+        <input type="submit" onsubmit="filterMap(map)" style="display: none" />
         <br>
 
         <h4>Choose a route computation method</h4>
@@ -356,7 +252,7 @@
         <p class="settingInfo">Hide the red route drawn on the map. The route is only drawn when using the "Complex
             Route" computation setting.</p>
 
-        <input type="button" value="Remove Route" onclick="eraseRoute()" />
+        <input type="button" value="Remove Route" onclick="eraseRoute(map)" />
 
         <br>
 
@@ -376,7 +272,7 @@
         <br>
 
         <h4>Save settings</h4>
-        <input type="button" value="Save and Apply" onclick="filterMap()" />
+        <input type="button" value="Save and Apply" onclick="filterMap(map)" />
     </div>
 </div>
 
@@ -384,53 +280,11 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
-    function filterMap() {
-        console.log("Filtering map");
-
-        try {
-            eraseRoute();
-            eraseLayers();
-        }
-        catch (err) {
-            console.log("No map data to erase");
-        }
-
-
-        //Remake route
-        // Add a tile layer
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(map);
-
-        fetchLocations();
-    }
-
-    function eraseRoute() {
-        map.removeControl(control);
-    }
-
-    function eraseLayers() {
-        map.eachLayer((layer) => {
-            layer.remove();
-        });
-    }
-
-</script>
 
 <script>
+    // run on page load
 
-    function openForm() {
-        document.getElementById("myForm").style.display = "block";
-        document.getElementById("sign_out").style.display = "none"
-    }
-    function closeForm() {
-        document.getElementById("myForm").style.display = "none";
-        document.getElementById("sign_out").style.display = "block";
-    }
-
-
-    //find users and devices, then calculate route for the first entry
+    // find users and devices, then calculate route for the first entry
     getUsersAndDevices().then(usersAndDevices => {
 
         // if no users, not logged in
