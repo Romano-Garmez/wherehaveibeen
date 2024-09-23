@@ -19,7 +19,7 @@ function filterData(data) {
             // Add coordinates to the array
 
             //markers with velocity of zero and high acceleration tend to be very inaccurate, skip them
-            if (feature.properties.vel > 5) { //feature.properties.vel > 5 || feature.properties.vel == 0 && feature.properties.acc < 100
+            if (feature.properties.acc < 100) { //feature.properties.vel > 5 || feature.properties.vel == 0 && feature.properties.acc < 100
 
                 latlngs.push([lat, lng]);
 
