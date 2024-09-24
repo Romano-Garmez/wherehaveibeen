@@ -1,6 +1,6 @@
 //globals
-var highestAltitude = 0;
-var highestVelocity = 0;
+let highestAltitude = 0;
+let highestVelocity = 0;
 
 /**
  * Handles OwnTracks GPS points pulled from server and cleans them up. Skips data points with inaccurate coordinates, and notes the highest altitude and velocity.
@@ -9,7 +9,7 @@ var highestVelocity = 0;
  */
 function filterData(data) {
 
-    var latlngs = [];
+    let latlngs = [];
 
     console.log(data.features[0]);
 
@@ -84,13 +84,13 @@ async function getUsersAndDevices() {
 
 
             // Iterate through the data and populate the sets
-            var select = document.getElementById("userBox");
+            let select = document.getElementById("userBox");
             select.innerHTML = '';
 
             select = document.getElementById("deviceBox");
             select.innerHTML = '';
 
-            var el;
+            let el;
 
             data.forEach(entry => {
                 if (entry.username) {
@@ -131,12 +131,12 @@ function getCoverageStats(buffered, lineString) {
     let start = Date.now();
 
     // Convert distance to kilometers
-    var distanceKm = turf.length(lineString, { units: 'kilometers' }); // Total distance in kilometers
+    let distanceKm = turf.length(lineString, { units: 'kilometers' }); // Total distance in kilometers
 
     document.getElementById('totalDist').innerHTML = "<p>" + Math.round(distanceKm * 100) / 100 + "km or " + Math.round((distanceKm / 1.609) * 100) / 100 + "mi</p>";
 
     // Calculate the total area of the route
-    var area = turf.area(buffered) / 1e6; // Convert m² to km²
+    let area = turf.area(buffered) / 1e6; // Convert m² to km²
 
     document.getElementById('totalArea').innerHTML = "<p>" + Math.round(area * 100) / 100 + "km² or " + Math.round((area / 1.609) * 100) / 100 + "mi²</p>";
 
