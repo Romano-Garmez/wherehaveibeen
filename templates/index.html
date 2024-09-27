@@ -65,7 +65,11 @@
                     // Create an array to hold the coordinates
                     var latlngs = filterData(data);
 
-                    getOwntracksStats(data.features, getHighestAltitude(), getHighestVelocity());
+                    //start date
+                    console.log("Start date of OwnTracks data is " + data.features[0].properties.isotst.substring(0, 10));
+
+                    //total gps points
+                    console.log("Total number of OwnTracks data points is " + data.features.length);
 
                     // Get selected buffering method
                     var bufferingMethod = document.getElementById('bufferMethod').value;

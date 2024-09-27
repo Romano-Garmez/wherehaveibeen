@@ -4,7 +4,7 @@ from requests.auth import HTTPBasicAuth
 
 app = Flask(__name__)
 
-debugMode = True
+debugMode = False
 
 
 @app.route("/")
