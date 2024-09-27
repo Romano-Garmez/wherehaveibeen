@@ -4,6 +4,8 @@ from requests.auth import HTTPBasicAuth
 
 app = Flask(__name__)
 
+debugMode = True
+
 
 @app.route("/")
 def index():
@@ -167,5 +169,9 @@ if __name__ == "__main__":
 
     from waitress import serve
 
-    print("Server running on http://127.0.0.1:5000")
-    serve(app, host="0.0.0.0", port=5000)
+    if debugMode:
+        print("Server running on http://127.0.0.1:5001")
+        serve(app, host="0.0.0.0", port=5001)
+    else:
+        print("Server running on http://127.0.0.1:5000")
+        serve(app, host="0.0.0.0", port=5000)

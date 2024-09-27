@@ -149,14 +149,19 @@
 
         control = L.routing.control({
             waypoints: latlngs
-                .filter((_, index) => index % qualityInverse === 0) // Filter to include only every other entry
-                .map(latlng => L.latLng(latlng[0], latlng[1])),
-            router: L.Routing.osrmv1({ serviceUrl: '/proxy' }),
-            routeWhileDragging: false,
+                //.filter((_, index) => index % qualityInverse === 0) // Filter to include only every other entry
+                .map(function (latlng) {
+                    return L.latLng(latlng[0], latlng[1]);
+                }),
+            router: L.Routing.osrmv1({
+                serviceUrl: '/proxy',
+                profile: 'car', // or 'bike', 'foot' depending on your needs
+            }),
+            routeWhileDragging: true,
             createMarker: function () { return null; }, // Disable default marker
         }).addTo(map);
 
-        control.hide(); // hide top right panel
+        //control.hide(); // hide top right panel
         let timeTaken = Date.now() - start;
         console.log("Draw route time taken : " + timeTaken + " milliseconds");
     }
