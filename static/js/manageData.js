@@ -8,6 +8,8 @@ let highestVelocity = 0;
  * @returns 
  */
 function filterData(data) {
+    let highestAltitude = 0;
+    let highestVelocity = 0;
 
     let latlngs = [];
 
@@ -46,6 +48,8 @@ function filterData(data) {
         }
     });
 
+
+    getOwntracksStats(highestAltitude, highestVelocity);
     return latlngs;
 
 }
@@ -146,12 +150,7 @@ function getCoverageStats(buffered, lineString) {
     console.log("Coverage stats time taken : " + timeTaken + " milliseconds");
 }
 
-function getOwntracksStats(datafeatures, highestAltitude, highestVelocity) {
-    //start date
-    console.log("Start date of OwnTracks data is " + datafeatures[0].properties.isotst.substring(0, 10));
-
-    //total gps points
-    console.log("Total number of OwnTracks data points is " + datafeatures.length);
+function getOwntracksStats(highestAltitude, highestVelocity) {
 
     //highest altitude
     document.getElementById('highestAltitude').innerHTML = "<p>" + highestAltitude + "m or " + Math.round((highestAltitude * 3.281) * 100) / 100 + "ft</p>";
@@ -170,11 +169,11 @@ function filterMap(map) {
     console.log("Filtering map");
 
     try {
-        eraseRoute(map);
         eraseLayers(map);
+        eraseRoute(map);
     }
     catch (err) {
-        console.log("No map data to erase");
+        console.log("No map data to erase, err: " + err);
     }
 
 
