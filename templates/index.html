@@ -68,19 +68,23 @@
                     //start date
                     console.log("Start date of OwnTracks data is " + data.features[0].properties.isotst.substring(0, 10));
 
+                    //set start date filter to the first date in the data
+                    document.getElementById('startBox').value = data.features[0].properties.isotst.substring(0, 10);
+                    document.getElementById('endBox').value =  new Date().toLocaleDateString('en-CA');
+
                     //total gps points
                     console.log("Total number of OwnTracks data points is " + data.features.length);
 
                     // Get selected buffering method
-                    var bufferingMethod = document.getElementById('bufferMethod').value;
 
                     let timeTaken = Date.now() - start;
                     console.log("Fetching locations time taken : " + timeTaken + " milliseconds");
 
                     if (latlngs.length > 1) {
-                        if (bufferingMethod === 'complexRoute') {
+
+                        if (data.features.length < 500) {
                             bufferComplexRoute(latlngs);
-                        } else if (bufferingMethod === 'simpleRoute') {
+                        } else {
                             bufferSimpleRoute(latlngs);
                         }
                     }
@@ -165,7 +169,7 @@
             createMarker: function () { return null; }, // Disable default marker
         }).addTo(map);
 
-        //control.hide(); // hide top right panel
+        control.hide(); // hide top right panel
         let timeTaken = Date.now() - start;
         console.log("Draw route time taken : " + timeTaken + " milliseconds");
     }
@@ -245,15 +249,6 @@
         </select>
         <input type="submit" onsubmit="filterMap(map)" style="display: none" />
         <br>
-
-        <h4>Choose a route computation method</h4>
-        <p class="settingInfo">Choosing the "Complex Route" computation method tends to be more accurate, but slower to
-            calculate and can fail on large datasets. The "Simple Route" computation method should work in almost all
-            scenarios.</p>
-        <select id="bufferMethod">
-            <option value="simpleRoute">Simple Route Buffer</option>
-            <option value="complexRoute">Complex Route Buffer</option>
-        </select>
 
         <br>
 
