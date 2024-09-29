@@ -8,7 +8,7 @@ body {
     padding: 1%;
 }
 
-#infoPanel{
+#infoPanel {
     margin: 5%;
 }
 
@@ -157,4 +157,12 @@ select {
 
 #sign_out {
     display: none;
+}
+
+#filters {
+    padding-bottom: 5%;
+}
+
+#visuals {
+    padding-top: 5%;
 }
