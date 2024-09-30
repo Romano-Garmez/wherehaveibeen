@@ -3,8 +3,8 @@ let highestAltitude = 0;
 let highestVelocity = 0;
 
 let tasksDone = [];
-var progressBarNumSteps = 5;
-var progressBarError = false;
+let progressBarNumSteps = 5;
+let progressBarError = false;
 
 /**
  * Handles OwnTracks GPS points pulled from server and cleans them up. Skips data points with inaccurate coordinates, and notes the highest altitude and velocity.
@@ -20,7 +20,7 @@ function filterData(data) {
     console.log(data.features[0]);
 
     data.features.forEach(feature => {
-        if (feature.geometry && feature.geometry.coordinates) {
+        if (feature.geometry?.coordinates) {
             const [lng, lat] = feature.geometry.coordinates;
             // Add coordinates to the array
 
@@ -44,11 +44,7 @@ function filterData(data) {
                 //         `<br>Altitude: ${feature.properties.alt} m` +
                 //         `<br>Acceleration: ${feature.properties.acc} m/s²` +
                 //         `<br>Time: ${feature.properties.isotst}`);
-            } else {
-
-                //console.log("Skipping inaccurate data point with velocity " + feature.properties.vel + " and acceleration " + feature.properties.acc);
             }
-
         }
     });
 
@@ -60,6 +56,11 @@ function filterData(data) {
 
 }
 
+/**
+ * Mark a task complete and update the progress bar. Prints to console with what task finished and how long it took to complete.
+ * @param {*} task 
+ * @param {*} timeTaken 
+ */
 function completeTask(task, timeTaken) {
     tasksDone.push(task);
     console.log("Task " + task + " completed in " + timeTaken + " milliseconds");
@@ -68,16 +69,24 @@ function completeTask(task, timeTaken) {
     setTimeout(updateProgressBar, 0);
 }
 
+/**
+ * Return num of completed tasks
+ * @returns number of completed tasks
+ */
 function getNumTasksDone() {
     return tasksDone.length;
 }
 
+/**
+ * Updates the progress bar based on the number of tasks completed
+ * Changes color based on status
+ */
 function updateProgressBar() {
     console.log("Updating progress bar with value " + getNumTasksDone());
 
-    var totalTasks = progressBarNumSteps;
+    let totalTasks = progressBarNumSteps;
 
-    var progress = Math.round((getNumTasksDone() / totalTasks) * 100);
+    let progress = Math.round((getNumTasksDone() / totalTasks) * 100);
 
     document.getElementById("progressBarInner").style.width = progress + "%";
 
@@ -93,10 +102,25 @@ function updateProgressBar() {
 
 }
 
+/**
+ * Set how many tasks are required for "complete" status of progress bar, so far it's 5 for simple route planner and 6 for complex. 
+ * Complex has the extra step of drawing the route.
+ * @param {*} num 
+ */
 function setProgressBarNumSteps(num) {
     progressBarNumSteps = num;
 }
 
+/**
+ * Set the progress bar to error status
+ */
+function setProgressBarError() {
+    progressBarError = true;
+}
+
+/**
+ * Reset the progress bar to 0%
+ */
 function resetProgressBar() {
     tasksDone = [];
     progressBarError = false;
@@ -196,7 +220,6 @@ function getCoverageStats(buffered, lineString) {
     document.getElementById('totalAreaPct').innerHTML = "<p>" + area / 863440 + "%" + "</p>";
 
     let timeTaken = Date.now() - start;
-    //console.log("Coverage stats time taken : " + timeTaken + " milliseconds");
     completeTask("coverage stats", timeTaken);
 }
 
@@ -210,7 +233,6 @@ function getOwntracksStats(highestAltitude, highestVelocity) {
     document.getElementById('highestVelocity').innerHTML = "<p>" + highestVelocity + "kmh or " + Math.round((highestVelocity / 1.609) * 100) / 100 + "mph</p>";
 
     let timeTaken = Date.now() - start;
-    //console.log("OwnTracks stats time taken : " + timeTaken + " milliseconds");
     completeTask("OwnTracks stats", timeTaken);
 }
 
@@ -224,7 +246,6 @@ function filterMap() {
     console.log("Filtering map");
 
     try {
-        //eraseRoute();
         resetProgressBar();
         eraseLayers();
     }

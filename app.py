@@ -4,7 +4,7 @@ from requests.auth import HTTPBasicAuth
 
 app = Flask(__name__)
 
-debugMode = False
+macDebugMode = False
 
 
 @app.route("/")
@@ -52,9 +52,11 @@ def setcookie():
 
         resp = make_response(redirect("/"))
 
-        resp.set_cookie("username", username)
-        resp.set_cookie("password", password)
-        resp.set_cookie("serverurl", serverurl)
+        cookie_expiration = 60*60*24*30  # 30 days
+
+        resp.set_cookie("username", username, max_age=cookie_expiration)
+        resp.set_cookie("password", password, max_age=cookie_expiration)
+        resp.set_cookie("serverurl", serverurl, max_age=cookie_expiration)
 
         return resp
 
@@ -169,7 +171,7 @@ if __name__ == "__main__":
 
     from waitress import serve
 
-    if debugMode:
+    if macDebugMode:
         print("Server running on http://127.0.0.1:5001")
         serve(app, host="0.0.0.0", port=5001)
     else:

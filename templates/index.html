@@ -14,9 +14,9 @@
 
             <h3>Enter OwnTrack Login and URL</h3>
 
-            <input type='text' placeholder='username' name='username' />
-            <input type='password' placeholder='password' name='password' />
-            <input type='serverurl' placeholder='https://[your domain]' name='serverurl' /></p>
+            <input type='text' placeholder='username' name='username' autocomplete="on"/>
+            <input type='password' placeholder='password' name='password' autocomplete="on"/>
+            <input type='serverurl' placeholder='https://[your domain]' name='serverurl' autocomplete="on"/></p>
             <input class="btn" type='submit' value='Login' />
         </form>
     </div>
@@ -53,7 +53,7 @@
         }).toString())
             .then(response => {
                 if (!response.ok) {
-                    progressBarError = true;
+                    setProgressBarError();
                     throw new Error('Error fetching location data+Are you logged in?');
                 }
                 return response.json();
@@ -77,7 +77,6 @@
                     console.log("Total number of OwnTracks data points is " + data.features.length);
 
                     let timeTaken = Date.now() - start;
-                    //console.log("Fetching locations time taken : " + timeTaken + " milliseconds");
                     completeTask("fetching locations", timeTaken);
 
                     setTimeout(() => {
@@ -97,12 +96,12 @@
                     }, 50);
 
                 } else {
-                    progressBarError = true;
+                    setProgressBarError();
                     console.error('Unexpected data format:', data);
                 }
             })
             .catch(error => {
-                progressBarError = true;
+                setProgressBarError();
                 console.error('Fetch location error:', error);
             });
     }
@@ -126,7 +125,6 @@
             var lineString = turf.lineString(routeCoords);
 
             let timeTaken = Date.now() - start;
-            //console.log("Complex route time taken : " + timeTaken + " milliseconds");
             completeTask("complex route drawing", timeTaken);
 
             setTimeout(() => {
@@ -151,7 +149,6 @@
         var lineString = turf.lineString(latlngs.map(latlng => [latlng[1], latlng[0]])); // [lng, lat]
 
         let timeTaken = Date.now() - start;
-        //console.log("Simple route time taken : " + timeTaken + " milliseconds");
         completeTask("simple route drawing", timeTaken);
 
         setTimeout(() => {
@@ -190,7 +187,6 @@
             control.hide(); // hide top right panel
 
             let timeTaken = Date.now() - start;
-            //console.log("Draw route time taken : " + timeTaken + " milliseconds");
             completeTask("route drawing", timeTaken);
         }, 50);
     }
@@ -222,7 +218,6 @@
         }).addTo(map);
 
         let timeTaken = Date.now() - start;
-        //console.log("Buffer drawing time taken : " + timeTaken + " milliseconds");
         completeTask("buffer drawing", timeTaken);
 
         setTimeout(() => {
