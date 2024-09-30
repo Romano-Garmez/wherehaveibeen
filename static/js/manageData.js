@@ -2,6 +2,10 @@
 let highestAltitude = 0;
 let highestVelocity = 0;
 
+let tasksDone = [];
+var progressBarNumSteps = 5;
+var progressBarError = false;
+
 /**
  * Handles OwnTracks GPS points pulled from server and cleans them up. Skips data points with inaccurate coordinates, and notes the highest altitude and velocity.
  * @param {*} data GPS data from OwnTracks
@@ -48,10 +52,55 @@ function filterData(data) {
         }
     });
 
+    setTimeout(() => {
+        getOwntracksStats(highestAltitude, highestVelocity);
+    }, 50);
 
-    getOwntracksStats(highestAltitude, highestVelocity);
     return latlngs;
 
+}
+
+function completeTask(task, timeTaken) {
+    tasksDone.push(task);
+    console.log("Task " + task + " completed in " + timeTaken + " milliseconds");
+
+    // Allow the browser to repaint after the task completes
+    setTimeout(updateProgressBar, 0);
+}
+
+function getNumTasksDone() {
+    return tasksDone.length;
+}
+
+function updateProgressBar() {
+    console.log("Updating progress bar with value " + getNumTasksDone());
+
+    var totalTasks = progressBarNumSteps;
+
+    var progress = Math.round((getNumTasksDone() / totalTasks) * 100);
+
+    document.getElementById("progressBarInner").style.width = progress + "%";
+
+    if (progressBarError) {
+        document.getElementById("progressBarInner").style.backgroundColor = "#FF0000";
+    }
+    else if (progress == 100) {
+        document.getElementById("progressBarInner").style.backgroundColor = "#04AA6D";
+    }
+    else {
+        document.getElementById("progressBarInner").style.backgroundColor = "#4870AF";
+    }
+
+}
+
+function setProgressBarNumSteps(num) {
+    progressBarNumSteps = num;
+}
+
+function resetProgressBar() {
+    tasksDone = [];
+    progressBarError = false;
+    updateProgressBar();
 }
 
 /**
@@ -147,16 +196,22 @@ function getCoverageStats(buffered, lineString) {
     document.getElementById('totalAreaPct').innerHTML = "<p>" + area / 863440 + "%" + "</p>";
 
     let timeTaken = Date.now() - start;
-    console.log("Coverage stats time taken : " + timeTaken + " milliseconds");
+    //console.log("Coverage stats time taken : " + timeTaken + " milliseconds");
+    completeTask("coverage stats", timeTaken);
 }
 
 function getOwntracksStats(highestAltitude, highestVelocity) {
+    let start = Date.now();
 
     //highest altitude
     document.getElementById('highestAltitude').innerHTML = "<p>" + highestAltitude + "m or " + Math.round((highestAltitude * 3.281) * 100) / 100 + "ft</p>";
 
     //highest velocity
     document.getElementById('highestVelocity').innerHTML = "<p>" + highestVelocity + "kmh or " + Math.round((highestVelocity / 1.609) * 100) / 100 + "mph</p>";
+
+    let timeTaken = Date.now() - start;
+    //console.log("OwnTracks stats time taken : " + timeTaken + " milliseconds");
+    completeTask("OwnTracks stats", timeTaken);
 }
 
 /**
@@ -165,12 +220,13 @@ function getOwntracksStats(highestAltitude, highestVelocity) {
  * @param {*} device
  * @returns
  */
-function filterMap(map) {
+function filterMap() {
     console.log("Filtering map");
 
     try {
-        eraseLayers(map);
-        eraseRoute(map);
+        //eraseRoute();
+        resetProgressBar();
+        eraseLayers();
     }
     catch (err) {
         console.log("No map data to erase, err: " + err);
@@ -188,12 +244,12 @@ function filterMap(map) {
 }
 
 // Function to erase the route from the map
-function eraseRoute(map) {
+function eraseRoute() {
     map.removeControl(control);
 }
 
 // Function to erase all layers from the map
-function eraseLayers(map) {
+function eraseLayers() {
     map.eachLayer((layer) => {
         layer.remove();
     });
