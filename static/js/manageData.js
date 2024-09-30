@@ -4,6 +4,7 @@ let highestVelocity = 0;
 
 let tasksDone = [];
 var progressBarNumSteps = 5;
+var progressBarError = false;
 
 /**
  * Handles OwnTracks GPS points pulled from server and cleans them up. Skips data points with inaccurate coordinates, and notes the highest altitude and velocity.
@@ -80,14 +81,25 @@ function updateProgressBar() {
 
     document.getElementById("progressBarInner").style.width = progress + "%";
 
+    if (progressBarError) {
+        document.getElementById("progressBarInner").style.backgroundColor = "#FF0000";
+    }
+    else if (progress == 100) {
+        document.getElementById("progressBarInner").style.backgroundColor = "#04AA6D";
+    }
+    else {
+        document.getElementById("progressBarInner").style.backgroundColor = "#4870AF";
+    }
+
 }
 
-function setProgressBarNumSteps(num){
+function setProgressBarNumSteps(num) {
     progressBarNumSteps = num;
 }
 
 function resetProgressBar() {
     tasksDone = [];
+    progressBarError = false;
     updateProgressBar();
 }
 
