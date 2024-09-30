@@ -75,19 +75,26 @@
                     //total gps points
                     console.log("Total number of OwnTracks data points is " + data.features.length);
 
-                    // Get selected buffering method
-
                     let timeTaken = Date.now() - start;
-                    console.log("Fetching locations time taken : " + timeTaken + " milliseconds");
+                    //console.log("Fetching locations time taken : " + timeTaken + " milliseconds");
+                    completeTask("fetching locations", timeTaken);
 
-                    if (latlngs.length > 1) {
+                    setTimeout(() => {
+                        if (latlngs.length > 1) {
 
-                        if (data.features.length < 500) {
-                            bufferComplexRoute(latlngs);
-                        } else {
-                            bufferSimpleRoute(latlngs);
+                            if (data.features.length < 500) {
+                                setProgressBarNumSteps(6);
+
+                                bufferComplexRoute(latlngs);
+
+                            } else {
+                                setProgressBarNumSteps(5);
+                                bufferSimpleRoute(latlngs);
+
+                            }
                         }
-                    }
+                    }, 50);
+
                 } else {
                     console.error('Unexpected data format:', data);
                 }
@@ -115,16 +122,18 @@
             var routeCoords = routes[0].coordinates.map(coord => [coord.lng, coord.lat]);
             var lineString = turf.lineString(routeCoords);
 
-            var bufferLayer = drawBuffer(lineString)
+            let timeTaken = Date.now() - start;
+            //console.log("Complex route time taken : " + timeTaken + " milliseconds");
+            completeTask("complex route drawing", timeTaken);
 
-            // Adjust the view to show the entire buffered area
-            var bounds = bufferLayer.getBounds();
-            map.fitBounds(bounds);
+            setTimeout(() => {
+                var bufferLayer = drawBuffer(lineString)
+
+                // Adjust the view to show the entire buffered area
+                var bounds = bufferLayer.getBounds();
+                map.fitBounds(bounds);
+            }, 50);
         });
-
-        let timeTaken = Date.now() - start;
-        console.log("Complex route time taken : " + timeTaken + " milliseconds");
-
     }
 
     /**
@@ -138,14 +147,17 @@
         // Create a lineString for buffering
         var lineString = turf.lineString(latlngs.map(latlng => [latlng[1], latlng[0]])); // [lng, lat]
 
-        drawBuffer(lineString)
-
-        // Adjust the view to show all markers, circles, and the polyline
-        var bounds = L.latLngBounds(latlngs);
-        map.fitBounds(bounds);
-
         let timeTaken = Date.now() - start;
-        console.log("Simple route time taken : " + timeTaken + " milliseconds");
+        //console.log("Simple route time taken : " + timeTaken + " milliseconds");
+        completeTask("simple route drawing", timeTaken);
+
+        setTimeout(() => {
+            drawBuffer(lineString)
+
+            // Adjust the view to show all markers, circles, and the polyline
+            var bounds = L.latLngBounds(latlngs);
+            map.fitBounds(bounds);
+        }, 50);
     }
 
     /**
@@ -153,6 +165,7 @@
      * @param {Array} latlngs - The gps points to draw the route with
      */
     function drawRoute(latlngs) {
+
         let start = Date.now();
 
         control = L.routing.control({
@@ -169,9 +182,14 @@
             createMarker: function () { return null; }, // Disable default marker
         }).addTo(map);
 
-        control.hide(); // hide top right panel
-        let timeTaken = Date.now() - start;
-        console.log("Draw route time taken : " + timeTaken + " milliseconds");
+        setTimeout(() => {
+
+            control.hide(); // hide top right panel
+
+            let timeTaken = Date.now() - start;
+            //console.log("Draw route time taken : " + timeTaken + " milliseconds");
+            completeTask("route drawing", timeTaken);
+        }, 50);
     }
 
     /**
@@ -191,7 +209,6 @@
         var buffered = turf.buffer(simplifiedLineString, circleSize, { units: 'kilometers', steps: 3 }); // 1 km buffer
 
 
-        getCoverageStats(buffered, simplifiedLineString);
 
 
         // Convert the buffer to GeoJSON and add it to the map
@@ -202,12 +219,40 @@
         }).addTo(map);
 
         let timeTaken = Date.now() - start;
-        console.log("Buffer drawing time taken : " + timeTaken + " milliseconds");
+        //console.log("Buffer drawing time taken : " + timeTaken + " milliseconds");
+        completeTask("buffer drawing", timeTaken);
+
+        setTimeout(() => {
+            getCoverageStats(buffered, simplifiedLineString);
+        }, 50);
 
         return bufferLayer;
     }
 
+
+    // run on page load
+    window.onload = function () {
+
+        // find users and devices, then calculate route for the first entry
+        getUsersAndDevices().then(usersAndDevices => {
+
+            // if no users, not logged in
+            if (usersAndDevices != -1) {
+                fetchLocations();
+            }
+
+        });
+
+    };
+
+
 </script>
+
+
+<div id="progressBar">
+    <div id="progressBarInner"></div>
+</div>
+
 
 <div id="infoBox">
     <div id="leftPanel">
@@ -251,7 +296,7 @@
             <select id="deviceBox">
                 <option value="" selected disabled>Choose a device</option>
             </select>
-            <input type="submit" onsubmit="filterMap(map)" style="display: none" />
+            <input type="submit" onsubmit="filterMap()" style="display: none" />
             <br>
 
 
@@ -302,17 +347,6 @@
 {% block scripts %}
 
 <script>
-    // run on page load
-
-    // find users and devices, then calculate route for the first entry
-    getUsersAndDevices().then(usersAndDevices => {
-
-        // if no users, not logged in
-        if (usersAndDevices != -1) {
-            fetchLocations();
-        }
-
-    });
 
 
 </script>
