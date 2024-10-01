@@ -52,7 +52,7 @@ def setcookie():
 
         resp = make_response(redirect("/"))
 
-        cookie_expiration = 60*60*24*30  # 30 days
+        cookie_expiration = 60 * 60 * 24 * 30  # 30 days
 
         resp.set_cookie("username", username, max_age=cookie_expiration)
         resp.set_cookie("password", password, max_age=cookie_expiration)

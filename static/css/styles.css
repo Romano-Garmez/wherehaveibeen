@@ -66,10 +66,12 @@ body {
     float: left;
     margin-bottom: 2vw;
 }
+
 #leftPanel:has(.innerPanel) {
     background-color: #f1f1f1;
     padding: 0%;
 }
+
 #rightPanel:has(.innerPanel) {
     background-color: #f1f1f1;
     padding: 0%;
@@ -150,7 +152,7 @@ select {
 }
 
 .btn {
-    
+
     color: white;
     padding: 16px 20px;
     width: 100%;
