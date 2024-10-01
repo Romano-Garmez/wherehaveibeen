@@ -14,9 +14,9 @@
 
             <h3>Enter OwnTrack Login and URL</h3>
 
-            <input type='text' placeholder='username' name='username' autocomplete="on"/>
-            <input type='password' placeholder='password' name='password' autocomplete="on"/>
-            <input type='serverurl' placeholder='https://[your domain]' name='serverurl' autocomplete="on"/></p>
+            <input type='text' placeholder='username' name='username' autocomplete="on" />
+            <input type='password' placeholder='password' name='password' autocomplete="on" />
+            <input type='serverurl' placeholder='https://[your domain]' name='serverurl' autocomplete="on" /></p>
             <input class="btn" type='submit' value='Login' />
         </form>
     </div>
@@ -253,29 +253,8 @@
 
 
 <div id="infoBox">
+
     <div id="leftPanel">
-        <!-- MAP INFO -->
-        <h1 id="title">Information </h1>
-        <p> This map shows the location history of the devices that are sending their location data to the Owntracks
-            server. Learn more on the about page.
-        </p>
-
-        <h4>Total distance driven </h4>
-        <div id="totalDist"></div>
-
-        <h4>Area explored is </h4>
-        <div id="totalArea"></div>
-
-        <h4>Percentage of west coast covered </h4>
-        <div id="totalAreaPct"></div>
-
-        <h4>Highest Altitude</h4>
-        <div id="highestAltitude"></div>
-
-        <h4>Highest Velocity</h4>
-        <div id="highestVelocity"></div>
-    </div>
-    <div id="rightPanel">
         <!-- MAP CONTROLS -->
 
         <div id="filters">
@@ -300,17 +279,17 @@
 
             <h4>Time frame</h4>
             <p class="settingInfo">Filter the map to only shows GPS data between these two dates.</p>
-                <div class="dateFilters" style="float:left; width: 50%;">
-                    <h5>Start Date </h5>
+            <div class="dateFilters" style="float:left; width: 50%;">
+                <h5>Start Date </h5>
 
-                    <input type="date" id="startBox" onkeyup="" name="trip-start" value="2015-01-01" min="2015-01-01"
-                        max="2099-12-31" />
-                </div>
-                <div class="dateFilters" style="float:left; width: 50%;">
-                    <h5>End Date </h5>
-                    <input type="date" id="endBox" onkeyup="" name="trip-start" value="2099-12-31" min="2015-01-01"
-                        max="2099-12-31" />
-                </div>
+                <input type="date" id="startBox" onkeyup="" name="trip-start" value="2015-01-01" min="2015-01-01"
+                    max="2099-12-31" />
+            </div>
+            <div class="dateFilters" style="float:left; width: 50%;">
+                <h5>End Date </h5>
+                <input type="date" id="endBox" onkeyup="" name="trip-start" value="2099-12-31" min="2015-01-01"
+                    max="2099-12-31" />
+            </div>
 
             <h4>Save and Apply Settings</h4>
             <input type="button" value="Apply" onclick="filterMap(map)" />
@@ -331,6 +310,28 @@
             <h4>Save and Apply Settings</h4>
             <input type="button" value="Apply" onclick="filterMap(map)" />
         </div>
+    </div>
+    <div id="rightPanel">
+        <!-- MAP INFO -->
+        <h1 id="title">Information </h1>
+        <p> This map shows the location history of the devices that are sending their location data to the Owntracks
+            server. Learn more on the about page.
+        </p>
+
+        <h4>Total distance driven </h4>
+        <div id="totalDist"></div>
+
+        <h4>Area explored is </h4>
+        <div id="totalArea"></div>
+
+        <h4>Percentage of west coast covered </h4>
+        <div id="totalAreaPct"></div>
+
+        <h4>Highest Altitude</h4>
+        <div id="highestAltitude"></div>
+
+        <h4>Highest Velocity</h4>
+        <div id="highestVelocity"></div>
     </div>
 </div>
 
