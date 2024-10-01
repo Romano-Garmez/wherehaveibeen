@@ -61,6 +61,11 @@ p {
     font-size: 1.5em;
 }
 
+p a {
+    color: #4870AF;
+    font-size: 1em;
+}
+
 .settingInfo {
     font-size: 1em;
 }
