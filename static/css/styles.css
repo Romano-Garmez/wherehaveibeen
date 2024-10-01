@@ -7,18 +7,18 @@ body {
     width: 100%;
     height: 2vh;
     display: table;
-    background-color:white;
+    background-color: white;
 }
 
 #progressBarInner {
-    width:0%;
+    width: 0%;
     height: 2vh;
-    transition:50ms linear;
+    transition: 50ms linear;
     background-color: #4870AF;
 }
 
 #infoBox {
-    margin: 1%;
+    margin: 2%;
     display: table;
 }
 
@@ -38,7 +38,7 @@ body {
 }
 
 #leftPanel {
-    width: 48vw;
+    width: 47vw;
     padding: 2%;
     display: table-cell;
     background-color: white;
@@ -48,13 +48,30 @@ body {
 }
 
 #rightPanel {
-    width: 48vw;
+    width: 47vw;
     padding: 2%;
     display: table-cell;
     background-color: white;
     border-radius: 25px;
     float: left;
     margin-left: 1vw;
+}
+
+.innerPanel {
+    padding: 2%;
+    display: table-cell;
+    background-color: white;
+    border-radius: 25px;
+    float: left;
+    margin-bottom: 2vw;
+}
+#leftPanel:has(.innerPanel) {
+    background-color: #f1f1f1;
+    padding: 0%;
+}
+#rightPanel:has(.innerPanel) {
+    background-color: #f1f1f1;
+    padding: 0%;
 }
 
 p {
@@ -132,7 +149,7 @@ select {
 }
 
 .btn {
-    background-color: #04AA6D;
+    
     color: white;
     padding: 16px 20px;
     width: 100%;
@@ -141,10 +158,11 @@ select {
     font-size: larger;
 }
 
-.btn:hover {
-    opacity: 1;
-    background-color: #FFF;
+.btn-success {
+    background-color: #04AA6D;
 }
+
+
 
 /* Add a red background color to the cancel button */
 .form-container .cancel {
@@ -185,13 +203,7 @@ select {
     display: none;
 }
 
-#filters {
-    padding-bottom: 5%;
-}
 
-#visuals {
-    padding-top: 5%;
-}
 
 .dateFilters {
     padding-bottom: 5%;

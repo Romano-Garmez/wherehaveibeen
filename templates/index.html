@@ -17,7 +17,7 @@
             <input type='text' placeholder='username' name='username' autocomplete="on" />
             <input type='password' placeholder='password' name='password' autocomplete="on" />
             <input type='serverurl' placeholder='https://[your domain]' name='serverurl' autocomplete="on" /></p>
-            <input class="btn" type='submit' value='Login' />
+            <input class="btn btn-success" type='submit' value='Login' />
         </form>
     </div>
 
@@ -257,20 +257,19 @@
     <div id="leftPanel">
         <!-- MAP CONTROLS -->
 
-        <div id="filters">
-            <h1> Filters and Settings </h1>
+        <div class="innerPanel">
+            <h1> Filters </h1>
             <p class="settingInfo">Is your data showing incorrectly on the map? Try adjusting these settings. Make sure
-                the
-                user and device are correct, and try changing time frame if it's too much data.</p>
+                the user and device are correct, and try changing time frame.</p>
 
             <h4>Choose a user and device</h4>
             <p class="settingInfo">Choose which device to track. This is your OwnTracks user and device.</p>
 
 
-            <select id="userBox">
+            <select class="form-select" id="userBox">
                 <option value="" selected disabled>Choose a user</option>
             </select>
-            <select id="deviceBox">
+            <select class="form-select" id="deviceBox">
                 <option value="" selected disabled>Choose a device</option>
             </select>
             <br>
@@ -282,33 +281,33 @@
             <div class="dateFilters" style="float:left; width: 50%;">
                 <h5>Start Date </h5>
 
-                <input type="date" id="startBox" onkeyup="" name="trip-start" value="2015-01-01" min="2015-01-01"
+                <input type="date" class="input-group date"  id="startBox" onkeyup="" name="trip-start" value="2015-01-01" min="2015-01-01"
                     max="2099-12-31" />
             </div>
             <div class="dateFilters" style="float:left; width: 50%;">
                 <h5>End Date </h5>
-                <input type="date" id="endBox" onkeyup="" name="trip-start" value="2099-12-31" min="2015-01-01"
+                <input type="date" class="input-group date"  id="endBox" onkeyup="" name="trip-start" value="2099-12-31" min="2015-01-01"
                     max="2099-12-31" />
             </div>
 
             <h4>Save and Apply Settings</h4>
-            <input type="button" value="Apply" onclick="filterMap(map)" />
+            <input type="button" class="btn btn-primary" value="Apply" onclick="filterMap(map)" />
         </div>
 
-        <div id="visuals">
-            <h4>Visual settings</h4>
-            <p class="settingInfo">Hide the red route drawn on the map. The route is only drawn when using the "Complex
-                Route" computation setting.</p>
+        <div class="innerPanel">
+            <h1>Visual settings</h1>
+            <p class="settingInfo">Hide the red route drawn on the map. The route is only drawn when less than 500 GPS
+                points are used. Adjust the date filters to see this!</p>
 
-            <input type="button" value="Remove Route" onclick="eraseRoute(map)" />
+            <input type="button" class="btn btn-danger" value="Remove Route" onclick="eraseRoute(map)" />
 
             <h5>Buffer Size </h5>
             <p class="settingInfo">Change how large of a buffer is drawn around your route. Note that larger values take
                 longer to draw. Default: 0.5</p>
-            <input type="number" id="circleSize" value="0.5" step="0.1" min="0.1" max="10" />
+            <input type="number" class="form-control form-control-lg" id="circleSize" value="0.5" step="0.1" min="0.1" max="10" />
 
             <h4>Save and Apply Settings</h4>
-            <input type="button" value="Apply" onclick="filterMap(map)" />
+            <input type="button" class="btn btn-primary" value="Apply" onclick="filterMap(map)" />
         </div>
     </div>
     <div id="rightPanel">
@@ -317,7 +316,7 @@
         <p> This map shows the location history of the devices that are sending their location data to the Owntracks
             server. <a href="/about">Learn more.</a>
         </p>
-        
+
 
         <h4>Total distance driven </h4>
         <div id="totalDist"></div>
