@@ -60,6 +60,7 @@ body {
 }
 
 .innerPanel {
+    width: 48vw;
     padding: 2vw;
     display: table-cell;
     background-color: white;
