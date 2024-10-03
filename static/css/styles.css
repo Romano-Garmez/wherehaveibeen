@@ -19,7 +19,8 @@ body {
 }
 
 #infoBox {
-    margin: 2%;
+    margin: 1vw;
+    width: 98vw;
     display: table;
 }
 
@@ -39,8 +40,8 @@ body {
 }
 
 #leftPanel {
-    width: 47vw;
-    padding: 2%;
+    width: 48vw;
+    padding: 2vw;
     display: table-cell;
     background-color: white;
     border-radius: 25px;
@@ -49,8 +50,8 @@ body {
 }
 
 #rightPanel {
-    width: 47vw;
-    padding: 2%;
+    width: 48vw;
+    padding: 2vw;
     display: table-cell;
     background-color: white;
     border-radius: 25px;
@@ -59,7 +60,7 @@ body {
 }
 
 .innerPanel {
-    padding: 2%;
+    padding: 2vw;
     display: table-cell;
     background-color: white;
     border-radius: 25px;
