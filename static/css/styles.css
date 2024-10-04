@@ -45,6 +45,7 @@ body {
     position: absolute;
     z-index: 9999;
     box-shadow: inset 0px 0px 15px 10px rgba(0, 0, 0, 0.15);
+    pointer-events: none;
 
     top: 0px;
 
