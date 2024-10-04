@@ -128,7 +128,7 @@
             completeTask("complex route drawing", timeTaken);
 
             setTimeout(() => {
-                var bufferLayer = drawBuffer(lineString)
+                var bufferLayer = drawBuffer(lineString, 0.002)
 
                 // Adjust the view to show the entire buffered area
                 var bounds = bufferLayer.getBounds();
@@ -152,7 +152,7 @@
         completeTask("simple route drawing", timeTaken);
 
         setTimeout(() => {
-            drawBuffer(lineString)
+            drawBuffer(lineString, 0.01)
 
             // Adjust the view to show all markers, circles, and the polyline
             var bounds = L.latLngBounds(latlngs);
@@ -196,13 +196,13 @@
      * @param {Object} lineString - The lineString to buffer
      * @returns {Object} - The buffer layer
      */
-    function drawBuffer(lineString) {
+    function drawBuffer(lineString, tolerance) {
         let start = Date.now();
 
         circleSize = document.getElementById('circleSize').value
 
         // Simplify the route before buffering
-        var simplifiedLineString = turf.simplify(lineString, { tolerance: .01, highQuality: false });
+        var simplifiedLineString = turf.simplify(lineString, { tolerance: tolerance, highQuality: false });
 
         // Buffer the route with Turf.js
         var buffered = turf.buffer(simplifiedLineString, circleSize, { units: 'kilometers', steps: 3 }); // 1 km buffer
