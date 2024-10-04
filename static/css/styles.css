@@ -8,6 +8,8 @@ body {
     height: 2vh;
     display: table;
     background-color: white;
+
+    box-shadow: 0px 0px 10px 5px rgba(0, 0, 0, 0.05);
 }
 
 #progressBarInner {
@@ -28,7 +30,24 @@ body {
     margin: 5%;
 }
 
+#map-container {
+    position: relative;
+
+}
+
 #map {
+    position: relative;
+    height: 70vh;
+    width: 100%;
+}
+
+#map-shadow {
+    position: absolute;
+    z-index: 9999;
+    box-shadow: inset 0px 0px 15px 10px rgba(0, 0, 0, 0.15);
+
+    top: 0px;
+
     height: 70vh;
     width: 100%;
 }
@@ -47,6 +66,8 @@ body {
     border-radius: 25px;
     float: left;
     margin-right: 1vw;
+
+    box-shadow: 0px 0px 10px 5px rgba(0, 0, 0, 0.15);
 }
 
 #rightPanel {
@@ -57,6 +78,8 @@ body {
     border-radius: 25px;
     float: left;
     margin-left: 1vw;
+
+    box-shadow: 0px 0px 10px 5px rgba(0, 0, 0, 0.15);
 }
 
 .innerPanel {
@@ -67,16 +90,21 @@ body {
     border-radius: 25px;
     float: left;
     margin-bottom: 2vw;
+
+    box-shadow: 0px 0px 10px 5px rgba(0, 0, 0, 0.15);
 }
 
 #leftPanel:has(.innerPanel) {
     background-color: #f1f1f1;
     padding: 0%;
+
+    box-shadow: none;
 }
 
 #rightPanel:has(.innerPanel) {
     background-color: #f1f1f1;
     padding: 0%;
+    box-shadow: none;
 }
 
 p {
@@ -113,10 +141,10 @@ select {
 /* The popup form - hidden by default */
 .form-popup {
     position: absolute;
-    top: 70px;
+    z-index: 10000;
+    top: 0px;
     right: 0px;
     background-color: #4870AF;
-    z-index: 10000;
     padding: 10px;
 
     border-bottom-left-radius: 10px;
