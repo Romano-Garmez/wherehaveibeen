@@ -9,6 +9,7 @@
 <div id="map"></div>
 
 <script>
+    var circleSize = 0.5;
 
     var control;
 
@@ -43,18 +44,14 @@
             .bindPopup(`<b>${point.name}</b>`);
     });
 
+    setProgressBarNumSteps(3);
     // Call the bufferComplexRoute function
     bufferComplexRoute(latlngs);
 
     function bufferComplexRoute(latlngs) {
-        control = L.Routing.control({
-            waypoints: latlngs.map(latlng => L.latLng(latlng[0], latlng[1])),
-            router: L.Routing.osrmv1({ serviceUrl: '/proxy' }), // Using public OSRM service for demo
-            routeWhileDragging: false,
-            createMarker: function () { return null; }, // Disable default marker
-        }).addTo(map);
+        let start = Date.now();
 
-        control.hide(); // Hide the route line
+        drawRoute(latlngs);
 
         // Listen for the routesfound event
         control.on('routesfound', function (e) {
@@ -64,23 +61,71 @@
             var routeCoords = routes[0].coordinates.map(coord => [coord.lng, coord.lat]);
             var lineString = turf.lineString(routeCoords);
 
-            // Simplify the route before buffering
-            var simplifiedLineString = turf.simplify(lineString, { tolerance: 0.001, highQuality: false });
+            let timeTaken = Date.now() - start;
+            completeTask("complex route drawing", timeTaken);
 
-            // Buffer the route with Turf.js
-            var buffered = turf.buffer(simplifiedLineString, 0.5, { units: 'kilometers' });
+            setTimeout(() => {
+                var bufferLayer = drawBuffer(lineString, 0.002)
 
-            // Convert the buffer to GeoJSON and add it to the map
-            var bufferLayer = L.geoJSON(buffered, {
-                style: function () {
-                    return { color: 'rgba(0, 0, 255, 0.4)', weight: 2 };
-                }
-            }).addTo(map);
-
-            // Adjust the view to show the entire buffered area
-            var bounds = bufferLayer.getBounds();
-            map.fitBounds(bounds);
+                // Adjust the view to show the entire buffered area
+                var bounds = bufferLayer.getBounds();
+                map.fitBounds(bounds);
+            }, 50);
         });
+    }
+
+    function drawRoute(latlngs) {
+
+        let start = Date.now();
+
+        control = L.routing.control({
+            waypoints: latlngs
+                //.filter((_, index) => index % qualityInverse === 0) // Filter to include only every other entry
+                .map(function (latlng) {
+                    return L.latLng(latlng[0], latlng[1]);
+                }),
+            router: L.Routing.osrmv1({
+                serviceUrl: '/proxy',
+                profile: 'car', // or 'bike', 'foot' depending on your needs
+            }),
+            routeWhileDragging: true,
+            createMarker: function () { return null; }, // Disable default marker
+        }).addTo(map);
+
+        setTimeout(() => {
+
+            control.hide(); // hide top right panel
+
+            let timeTaken = Date.now() - start;
+            completeTask("route drawing", timeTaken);
+        }, 50);
+    }
+
+    function drawBuffer(lineString, tolerance) {
+        let start = Date.now();
+
+        //circleSize = document.getElementById('circleSize').value
+
+        // Simplify the route before buffering
+        var simplifiedLineString = turf.simplify(lineString, { tolerance: tolerance, highQuality: false });
+
+        // Buffer the route with Turf.js
+        var buffered = turf.buffer(simplifiedLineString, circleSize, { units: 'kilometers', steps: 3 }); // 1 km buffer
+
+
+
+
+        // Convert the buffer to GeoJSON and add it to the map
+        var bufferLayer = L.geoJSON(buffered, {
+            style: function () {
+                return { color: 'rgba(0, 0, 255, 0.4)', weight: 2 };
+            }
+        }).addTo(map);
+
+        let timeTaken = Date.now() - start;
+        completeTask("buffer drawing", timeTaken);
+
+        return bufferLayer;
     }
 </script>
 
@@ -130,6 +175,10 @@
     } 
 </script>
 
+<div id="progressBar">
+    <div id="progressBarInner"></div>
+</div>
+
 <div id="infoBox">
     <div id="leftPanel">
         <div class="innerPanel">
@@ -153,9 +202,9 @@
         </div>
         <div class="innerPanel">
             <p>WhereHaveIBeen is a web app to display your OwnTracks location history while doing some extra
-                processing to snap the routes between each location update to roads. It's not perfect, but it's better
-                than
-                using the OwnTracks data directly.</p>
+                processing to snap the routes between each location update to roads. This allows you to see the exact
+                route you've taken, without wasting your phone battery by uploading location every second.
+            </p>
             <p>Want to learn how to use it? Check the "Setup Guide" in the navbar.</p>
         </div>
     </div>
