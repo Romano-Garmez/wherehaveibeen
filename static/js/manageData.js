@@ -12,6 +12,8 @@ let progressBarError = false;
  * @returns 
  */
 function filterData(data) {
+    let start = Date.now();
+
     let highestAltitude = 0;
     let highestVelocity = 0;
 
@@ -29,8 +31,6 @@ function filterData(data) {
 
                 latlngs.push([lat, lng]);
 
-
-
                 if (feature.properties.alt > highestAltitude) {
                     highestAltitude = feature.properties.alt;
                 }
@@ -47,6 +47,9 @@ function filterData(data) {
             }
         }
     });
+
+    let timeTaken = Date.now() - start;
+    completeTask("filtering data", timeTaken);
 
     setTimeout(() => {
         getOwntracksStats(highestAltitude, highestVelocity);
