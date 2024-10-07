@@ -7,13 +7,13 @@
  ## Example Screenshots
 
 ![complexmode](screenshots/ComplexMode.png)
-###### WhereHaveIBeen showing the roads I've travelled in the last week
+### WhereHaveIBeen showing the roads I've travelled in the last week
 
 <br>
 <br>
 
 ![simplemode](screenshots/SimpleMode.png)
-###### WhereHaveIBeen showing the roads I've travelled since beginning recording
+### WhereHaveIBeen showing the roads I've travelled since beginning recording
 
 ---
 
@@ -29,13 +29,13 @@ WhereHaveIBeen is a web app to display your OwnTracks location history while doi
 ## Extra Features
 
 ![InfoBox](screenshots/InfoBox.png)
-Get stats on your OwnTracks data! Show the total distance travelled, area explored, as well as highest altitude and velocity.
+### Get stats on your OwnTracks data! Show the total distance travelled, area explored, as well as highest altitude and velocity.
 
 <br>
 <br>
 
 ![Filters](screenshots/Filters.png)
-Choose what data to show! WhereHaveIBeen supports multiple OwnTracks users and devices, as well as filtering down by time frame.
+### Choose what data to show! WhereHaveIBeen supports multiple OwnTracks users and devices, as well as filtering down by time frame.
 
 ---
 ## What's on the way?
