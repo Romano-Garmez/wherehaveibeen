@@ -1,8 +1,29 @@
-from flask import Flask, make_response, redirect, render_template, jsonify, request
+import sys
+from flask import (
+    Flask,
+    redirect,
+    render_template,
+    jsonify,
+    request,
+    session,
+)
 import requests
 from requests.auth import HTTPBasicAuth
+from datetime import timedelta
+import os
+
+debug = False
+
+if debug:
+    # Load environment variables from .env file
+    from dotenv import load_dotenv
+
+    load_dotenv()  # take environment variables from .env.
 
 app = Flask(__name__)
+
+app.secret_key = os.getenv("WHIB_FLASK_SECRET_KEY")
+app.permanent_session_lifetime = timedelta(days=30)
 
 macDebugMode = False
 
@@ -29,13 +50,9 @@ Actually just set the cookie to expire immediately
 
 @app.route("/sign_out")
 def sign_out():
-    resp = make_response(redirect("/"))
-
-    resp.set_cookie("username", expires=0)
-    resp.set_cookie("password", expires=0)
-    resp.set_cookie("serverurl", expires=0)
-
-    return resp
+    # Clear the session data
+    session.clear()
+    return redirect("/")
 
 
 """Create cookie with OwnTracks login info and URL
@@ -43,22 +60,22 @@ def sign_out():
 """
 
 
-@app.route("/setcookie", methods=["POST", "GET"])
-def setcookie():
+@app.route("/login", methods=["POST", "GET"])
+def login():
     if request.method == "POST":
+        # Retrieve user inputs from the form
         username = request.form["username"]
         password = request.form["password"]
         serverurl = request.form["serverurl"]
 
-        resp = make_response(redirect("/"))
+        session.permanent = True  # Make the session permanent
 
-        cookie_expiration = 60 * 60 * 24 * 30  # 30 days
+        # Store information in the session
+        session["username"] = username
+        session["password"] = password
+        session["serverurl"] = serverurl
 
-        resp.set_cookie("username", username, max_age=cookie_expiration)
-        resp.set_cookie("password", password, max_age=cookie_expiration)
-        resp.set_cookie("serverurl", serverurl, max_age=cookie_expiration)
-
-        return resp
+        return redirect("/")
 
 
 """Get OwnTracks data from server and return to client
@@ -96,10 +113,8 @@ def get_locations():
 
         # go make the request with login info from cookie
         response = requests.get(
-            request.cookies.get("serverurl") + "/api/0/locations",
-            auth=HTTPBasicAuth(
-                request.cookies.get("username"), request.cookies.get("password")
-            ),
+            session.get("serverurl") + "/api/0/locations",
+            auth=HTTPBasicAuth(session.get("username"), session.get("password")),
             params=params,
         )
         response.raise_for_status()
@@ -120,10 +135,8 @@ def get_users_devices():
 
         # go make the request with login info from cookie
         response = requests.get(
-            request.cookies.get("serverurl") + "/api/0/last",
-            auth=HTTPBasicAuth(
-                request.cookies.get("username"), request.cookies.get("password")
-            ),
+            session.get("serverurl") + "/api/0/last",
+            auth=HTTPBasicAuth(session.get("username"), session.get("password")),
         )
         response.raise_for_status()
         data = response.json()
@@ -166,14 +179,12 @@ def proxy_route(url):
 
 
 if __name__ == "__main__":
+    if os.getenv("WHIB_FLASK_SECRET_KEY") == None:
+        sys.exit("Missing Environment Variable: WHIB_FLASK_SECRET_KEY")
 
     # app.run(host='0.0.0.0', port=5000)
 
     from waitress import serve
 
-    if macDebugMode:
-        print("Server running on http://127.0.0.1:5001")
-        serve(app, host="0.0.0.0", port=5001)
-    else:
-        print("Server running on http://127.0.0.1:5000")
-        serve(app, host="0.0.0.0", port=5000)
+    print("Server running on http://127.0.0.1:5000")
+    serve(app, host="0.0.0.0", port=5000)
