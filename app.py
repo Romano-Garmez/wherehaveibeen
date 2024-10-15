@@ -12,6 +12,13 @@ from requests.auth import HTTPBasicAuth
 from datetime import timedelta
 import os
 
+debug = False
+
+if debug:
+    # Load environment variables from .env file
+    from dotenv import load_dotenv
+
+    load_dotenv()  # take environment variables from .env.
 
 app = Flask(__name__)
 
@@ -179,9 +186,5 @@ if __name__ == "__main__":
 
     from waitress import serve
 
-    if macDebugMode:
-        print("Server running on http://127.0.0.1:5001")
-        serve(app, host="0.0.0.0", port=5001)
-    else:
-        print("Server running on http://127.0.0.1:5000")
-        serve(app, host="0.0.0.0", port=5000)
+    print("Server running on http://127.0.0.1:5000")
+    serve(app, host="0.0.0.0", port=5000)
