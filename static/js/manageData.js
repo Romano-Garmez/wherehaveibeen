@@ -22,11 +22,8 @@ function debuggingTest() {
  * @param {*} data GPS data from OwnTracks
  * @returns 
  */
-function filterData(data) {
+async function filterData(data) {
     let start = Date.now();
-
-    let highestAltitude = 0;
-    let highestVelocity = 0;
 
     let latlngs = [];
 
@@ -56,25 +53,12 @@ function filterData(data) {
                     // Always add the first point
                     latlngs.push([lat, lng]);
                 }
-
-                if (feature.properties.alt > highestAltitude) {
-                    highestAltitude = feature.properties.alt;
-                }
-                if (feature.properties.vel > highestVelocity) {
-                    highestVelocity = feature.properties.vel;
-                }
-
-
             }
         }
     });
 
     let timeTaken = Date.now() - start;
     completeTask("filtering data", timeTaken);
-
-    setTimeout(() => {
-        getOwntracksStats(highestAltitude, highestVelocity);
-    }, 50);
 
     return latlngs;
 
@@ -276,8 +260,21 @@ function getCoverageStats(buffered, lineString) {
     completeTask("coverage stats", timeTaken);
 }
 
-function getOwntracksStats(highestAltitude, highestVelocity) {
+function getOwntracksStats(data) {
     let start = Date.now();
+
+    let highestAltitude = 0;
+    let highestVelocity = 0;
+
+    data.features.forEach(feature => {
+        if (feature.properties.alt > highestAltitude) {
+            highestAltitude = feature.properties.alt;
+        }
+        if (feature.properties.vel > highestVelocity) {
+            highestVelocity = feature.properties.vel;
+        }
+    });
+
 
     //highest altitude
     document.getElementById('highestAltitude').innerHTML = "<p>" + highestAltitude + "m or " + Math.round((highestAltitude * 3.281) * 100) / 100 + "ft</p>";

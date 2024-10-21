@@ -45,118 +45,105 @@
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
 
-    function runTasks() {
+    async function runTasks() {
         // find users and devices, then calculate route for the first entry
-        getUsersAndDevices().then(usersAndDevices => {
 
-            // if no users, not logged in
-            if (usersAndDevices != -1) {
+        const usersAndDevices = await getUsersAndDevices();
 
-                //locations
-                fetchLocations();
+        if (usersAndDevices != -1) {
+            //locations
+            const data = await fetchLocations();
+            updateProgressBar();
+            await new Promise(resolve => setTimeout(resolve, 0)); // Pause to allow UI to update
 
-                //filter data
-                filterData(data)
 
-                //get owntracks stats
-                getOwntracksStats(highestAltitude, highestVelocity);
+            //filter data
+            const latlngs = await filterData(data)
+            updateProgressBar();
+            await new Promise(resolve => setTimeout(resolve, 0)); // Pause to allow UI to update
 
-                //drawing buffer
-                if (latlngs.length > 1) {
 
-                    if (data.features.length < 500) {
-                        setProgressBarNumSteps(7);
+            //get owntracks stats
+            getOwntracksStats(data);
 
-                        bufferComplexRoute(latlngs);
+            //drawing buffer
+            if (latlngs.length > 1) {
 
-                        drawRoute(latlngs);
+                if (data.features.length < 500) {
+                    setProgressBarNumSteps(7);
 
-                    } else {
-                        setProgressBarNumSteps(6);
-                        bufferSimpleRoute(latlngs);
+                    const routeDrawing = await drawRoute(latlngs);
+
+                    if (routeDrawing == 0) {
+                        const linestring = await bufferComplexRoute(latlngs);
+                        const buffered = await drawBuffer(linestring, 0.01);
+                        updateProgressBar();
+                        await new Promise(resolve => setTimeout(resolve, 0)); // Pause to allow UI to update
+
+                        //get stats
+                        getCoverageStats(buffered, linestring);
 
                     }
+                } else {
+                    setProgressBarNumSteps(6);
+                    const linestring = await bufferSimpleRoute(latlngs);
+                    updateProgressBar();
+                    await new Promise(resolve => setTimeout(resolve, 0)); // Pause to allow UI to update
 
 
-                    //add buffer to map
-                    drawBuffer(linestring, 0.5);
+                    const buffered = await drawBuffer(linestring, 0.01);
+                    updateProgressBar();
+                    await new Promise(resolve => setTimeout(resolve, 0)); // Pause to allow UI to update
+
 
                     //get stats
-                    getCoverageStats(buffered, simplifiedLineString);
+                    getCoverageStats(buffered, linestring);
 
                 }
 
             }
-
-        });
+        }
     }
 
     /**
      * Fetch the users and devices from the server. This function is called after get user and device data succeeds. It attempts to pull the GPS data from the OwnTracks server and calls other methods to draw and handle extra details.
      */
-    function fetchLocations() {
+    async function fetchLocations() {
         let start = Date.now();
 
-        fetch('/locations?' + new URLSearchParams({
-            startdate: document.getElementById('startBox').value,
-            enddate: document.getElementById('endBox').value,
-            user: document.getElementById('userBox').value,
-            device: document.getElementById('deviceBox').value
-        }).toString())
-            .then(response => {
-                if (!response.ok) {
-                    setProgressBarError();
-                    throw new Error('Error fetching location data+Are you logged in?');
-                }
-                return response.json();
-            })
-            .then(data => {
-                // Successfully retrieved data, hide login prompt
-                closeForm();
+        try {
+            // Build the query parameters
+            const queryParams = new URLSearchParams({
+                startdate: document.getElementById('startBox').value,
+                enddate: document.getElementById('endBox').value,
+                user: document.getElementById('userBox').value,
+                device: document.getElementById('deviceBox').value
+            }).toString();
 
-                if (data.features && Array.isArray(data.features)) {
-                    let timeTaken = Date.now() - start;
-                    completeTask("fetching locations", timeTaken);
+            // Make the fetch request
+            const response = await fetch(`/locations?${queryParams}`);
 
-                    // Create an array to hold the coordinates
-                    var latlngs = filterData(data);
+            // Check if response is not OK
+            if (!response.ok) {
+                setProgressBarError();  // Update progress bar with error state
+                throw new Error('Error fetching location data. Are you logged in?');
+            }
 
-                    //start date
-                    console.log("Start date of OwnTracks data is " + data.features[0].properties.isotst.substring(0, 10));
+            // Parse the response JSON
+            const data = await response.json();
 
-                    //set start date filter to the first date in the data
-                    document.getElementById('startBox').value = data.features[0].properties.isotst.substring(0, 10);
-                    document.getElementById('endBox').value = new Date().toLocaleDateString('en-CA');
+            // Successfully retrieved data, hide login prompt
+            closeForm();
 
-                    //total gps points
-                    console.log("Total number of OwnTracks data points is " + data.features.length);
+            let timeTaken = Date.now() - start;
+            completeTask("fetching locations", timeTaken);
 
-
-                    setTimeout(() => {
-                        if (latlngs.length > 1) {
-
-                            if (data.features.length < 500) {
-                                setProgressBarNumSteps(7);
-
-                                bufferComplexRoute(latlngs);
-
-                            } else {
-                                setProgressBarNumSteps(6);
-                                bufferSimpleRoute(latlngs);
-
-                            }
-                        }
-                    }, 50);
-
-                } else {
-                    setProgressBarError();
-                    console.error('Unexpected data format:', data);
-                }
-            })
-            .catch(error => {
-                setProgressBarError();
-                console.error('Fetch location error:', error);
-            });
+            // Return the fetched data
+            return data;
+        } catch (error) {
+            setProgressBarError();  // Update progress bar with error state
+            console.error('Fetch location error:', error);
+        }
     }
 
     /**
@@ -164,10 +151,10 @@
      * @param {Object} data - The data to filter
      * @returns {Array} - The filtered data
      */
-    function bufferComplexRoute(latlngs) {
+    async function bufferComplexRoute(latlngs) {
         let start = Date.now();
 
-        drawRoute(latlngs);
+        //drawRoute(latlngs);
 
         // Listen for the routesfound event
         control.on('routesfound', function (e) {
@@ -180,13 +167,7 @@
             let timeTaken = Date.now() - start;
             completeTask("complex route drawing", timeTaken);
 
-            setTimeout(() => {
-                var bufferLayer = drawBuffer(lineString, 0.002)
-
-                // Adjust the view to show the entire buffered area
-                var bounds = bufferLayer.getBounds();
-                map.fitBounds(bounds);
-            }, 50);
+            return lineString;
         });
     }
 
@@ -195,29 +176,35 @@
      * @param {Object} data - The data to filter
      * @returns {Array} - The filtered data
      */
-    function bufferSimpleRoute(latlngs) {
+    async function bufferSimpleRoute(latlngs) {
         let start = Date.now();
 
-        // Create a lineString for buffering
-        var lineString = turf.lineString(latlngs.map(latlng => [latlng[1], latlng[0]])); // [lng, lat]
+        await new Promise(resolve => setTimeout(resolve, 0)); // Allow UI to update
+
+        // Split processing into smaller chunks
+        let processedLatlngs = [];
+        for (let i = 0; i < latlngs.length; i++) {
+            processedLatlngs.push([latlngs[i][1], latlngs[i][0]]); // [lng, lat]
+
+            // Every 100 iterations, yield control back to the browser to allow the UI to update
+            if (i % 100 === 0) {
+                await new Promise(resolve => setTimeout(resolve, 0));
+            }
+        }
+
+        const lineString = turf.lineString(processedLatlngs);
 
         let timeTaken = Date.now() - start;
         completeTask("simple route drawing", timeTaken);
 
-        setTimeout(() => {
-            drawBuffer(lineString, 0.01)
-
-            // Adjust the view to show all markers, circles, and the polyline
-            var bounds = L.latLngBounds(latlngs);
-            map.fitBounds(bounds);
-        }, 50);
+        return lineString;
     }
 
     /**
      * Draw the route on the map using Leaflet Routing Machine.
      * @param {Array} latlngs - The gps points to draw the route with
      */
-    function drawRoute(latlngs) {
+    async function drawRoute(latlngs) {
 
         let start = Date.now();
 
@@ -235,13 +222,12 @@
             createMarker: function () { return null; }, // Disable default marker
         }).addTo(map);
 
-        setTimeout(() => {
+        control.hide(); // hide top right panel
 
-            control.hide(); // hide top right panel
+        let timeTaken = Date.now() - start;
+        completeTask("route drawing", timeTaken);
 
-            let timeTaken = Date.now() - start;
-            completeTask("route drawing", timeTaken);
-        }, 50);
+        return 0;
     }
 
     /**
@@ -249,35 +235,54 @@
      * @param {Object} lineString - The lineString to buffer
      * @returns {Object} - The buffer layer
      */
-    function drawBuffer(lineString, tolerance) {
+    async function drawBuffer(lineString, tolerance) {
         let start = Date.now();
 
-        circleSize = document.getElementById('circleSize').value
+        // Wait before heavy computation to allow UI updates
+        await new Promise(resolve => setTimeout(resolve, 0));
 
-        // Simplify the route before buffering
-        var simplifiedLineString = turf.simplify(lineString, { tolerance: tolerance, highQuality: false });
+        // Get the circle size from the UI
+        const circleSize = document.getElementById('circleSize').value;
 
-        // Buffer the route with Turf.js
-        var buffered = turf.buffer(simplifiedLineString, circleSize, { units: 'kilometers', steps: 3 }); // 1 km buffer
+        // Simplify the route in chunks to avoid freezing the UI
+        let simplifiedLineString;
+        await new Promise(resolve => setTimeout(() => {
+            simplifiedLineString = turf.simplify(lineString, { tolerance: tolerance, highQuality: false });
+            resolve();
+        }, 0));
 
+        // Add a short pause to ensure the UI updates before buffering
+        await new Promise(resolve => setTimeout(resolve, 0));
 
-
+        // Buffer the simplified route with Turf.js in chunks
+        let buffered;
+        await new Promise(resolve => setTimeout(() => {
+            buffered = turf.buffer(simplifiedLineString, circleSize, { units: 'kilometers', steps: 3 }); // 1 km buffer
+            resolve();
+        }, 0));
 
         // Convert the buffer to GeoJSON and add it to the map
-        var bufferLayer = L.geoJSON(buffered, {
-            style: function () {
-                return { color: 'rgba(0, 0, 255, 0.4)', weight: 2 };
-            }
-        }).addTo(map);
+        let bufferLayer;
+        await new Promise(resolve => setTimeout(() => {
+            bufferLayer = L.geoJSON(buffered, {
+                style: function () {
+                    return { color: 'rgba(0, 0, 255, 0.4)', weight: 2 };
+                }
+            }).addTo(map);
+            resolve();
+        }, 0));
 
         let timeTaken = Date.now() - start;
         completeTask("buffer drawing", timeTaken);
 
-        setTimeout(() => {
-            getCoverageStats(buffered, simplifiedLineString);
-        }, 50);
+        // Add a short pause to let the UI update before fitting the map bounds
+        await new Promise(resolve => setTimeout(resolve, 0));
 
-        return bufferLayer;
+        // Adjust the map to fit the new buffer bounds
+        const bounds = bufferLayer.getBounds();
+        map.fitBounds(bounds);
+
+        return buffered;
     }
 
 
@@ -289,11 +294,9 @@
 
             // if no users, not logged in
             if (usersAndDevices != -1) {
-                fetchLocations();
+                runTasks();
             }
-
         });
-
     };
 
 
