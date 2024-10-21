@@ -28,6 +28,8 @@
     <div id="map-shadow"></div>
 </div>
 <script>
+    //debuggingTest();
+
     // todo: use these to handle move entries
     var qualityInverse = 3;
     var circleSize = 0.5;
@@ -67,6 +69,9 @@
                 closeForm();
 
                 if (data.features && Array.isArray(data.features)) {
+                    let timeTaken = Date.now() - start;
+                    completeTask("fetching locations", timeTaken);
+
                     // Create an array to hold the coordinates
                     var latlngs = filterData(data);
 
@@ -80,8 +85,6 @@
                     //total gps points
                     console.log("Total number of OwnTracks data points is " + data.features.length);
 
-                    let timeTaken = Date.now() - start;
-                    completeTask("fetching locations", timeTaken);
 
                     setTimeout(() => {
                         if (latlngs.length > 1) {

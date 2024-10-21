@@ -1,10 +1,21 @@
-//globals
+//settings
+const minDistance = .5; // Adjust the distance threshold in kilometers (10 meters for example)
+
+//stats
 let highestAltitude = 0;
 let highestVelocity = 0;
 
 let tasksDone = [];
 let progressBarNumSteps = 5;
 let progressBarError = false;
+
+function debuggingTest() {
+    const point1 = { lat: 36.983253, lng: -121.970049 };
+    const point2 = { lat: 36.983237, lng: -121.969948 };
+
+    const dist = getDistanceFromLatLonInKm(point1.lat, point1.lng, point2.lat, point2.lng);
+    console.log(`Distance between points: ${dist} km`);
+}
 
 /**
  * Handles OwnTracks GPS points pulled from server and cleans them up. Skips data points with inaccurate coordinates, and notes the highest altitude and velocity.
@@ -29,7 +40,22 @@ function filterData(data) {
             //markers with velocity of zero and high acceleration tend to be very inaccurate, skip them
             if (feature.properties.acc < 100) { //feature.properties.vel > 5 || feature.properties.vel == 0 && feature.properties.acc < 100
 
-                latlngs.push([lat, lng]);
+
+                if (latlngs.length > 0) {
+                    const lastPoint = latlngs[latlngs.length - 1];
+                    const dist = getDistanceFromLatLonInKm(lastPoint[0], lastPoint[1], lat, lng);
+
+                    // Only add the point if it's farther than the minimum distance
+                    if (dist > minDistance) {
+                        latlngs.push([lat, lng]);
+                        //addPopup(lat, lng, feature);
+
+                    }
+
+                } else {
+                    // Always add the first point
+                    latlngs.push([lat, lng]);
+                }
 
                 if (feature.properties.alt > highestAltitude) {
                     highestAltitude = feature.properties.alt;
@@ -38,12 +64,7 @@ function filterData(data) {
                     highestVelocity = feature.properties.vel;
                 }
 
-                // Add marker to the map (recommended only for small datasets, quite laggy)
-                // L.marker([lat, lng]).addTo(map)
-                //     .bindPopup(`<b>${feature.properties.name}</b><br>Velocity: ${feature.properties.vel} km/h` +
-                //         `<br>Altitude: ${feature.properties.alt} m` +
-                //         `<br>Acceleration: ${feature.properties.acc} m/s²` +
-                //         `<br>Time: ${feature.properties.isotst}`);
+
             }
         }
     });
@@ -57,6 +78,35 @@ function filterData(data) {
 
     return latlngs;
 
+}
+
+function addPopup(lat, lng, feature) {
+    //Add marker to the map (recommended only for small datasets, quite laggy)
+    L.marker([lat, lng]).addTo(map)
+        .bindPopup(`<b>${feature.properties.name}</b><br>Velocity: ${feature.properties.vel} km/h` +
+            `<br>Altitude: ${feature.properties.alt} m` +
+            `<br>Acceleration: ${feature.properties.acc} m/s²` +
+            `<br>Time: ${feature.properties.isotst}` +
+            `<br>Accuracy: ${feature.properties.acc} m` +
+            `<br>Latitude: ` + lat + `°` +
+            `<br>Longitude: ` + lng + `°`);
+}
+
+// Haversine formula to calculate distance between two lat/lng points
+function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+    const R = 6371; // Radius of the Earth in km
+    const dLat = deg2rad(lat2 - lat1);
+    const dLon = deg2rad(lon2 - lon1);
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c; // Distance in km
+}
+
+function deg2rad(deg) {
+    return deg * (Math.PI / 180);
 }
 
 /**
