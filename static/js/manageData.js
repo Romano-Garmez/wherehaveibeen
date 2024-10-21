@@ -118,8 +118,8 @@ function getNumTasksDone() {
  * Updates the progress bar based on the number of tasks completed
  * Changes color based on status
  */
-function updateProgressBar() {
-    console.log("Updating progress bar with value " + getNumTasksDone());
+async function updateProgressBar() {
+    //console.log("Updating progress bar with value " + getNumTasksDone());
 
     let totalTasks = progressBarNumSteps;
 
@@ -137,6 +137,8 @@ function updateProgressBar() {
         document.getElementById("progressBarInner").style.backgroundColor = "#4870AF";
     }
 
+    // Add a small delay to allow the browser to repaint the UI
+    await new Promise(resolve => setTimeout(resolve, 0));
 }
 
 /**
@@ -311,7 +313,7 @@ function filterMap() {
     }).addTo(map);
 
     // get new data
-    fetchLocations();
+    runTasks();
 }
 
 // Function to erase the route from the map

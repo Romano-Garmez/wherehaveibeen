@@ -46,6 +46,7 @@
     }).addTo(map);
 
     async function runTasks() {
+        setProgressBarNumSteps(6);
         // find users and devices, then calculate route for the first entry
 
         const usersAndDevices = await getUsersAndDevices();
@@ -54,52 +55,31 @@
             //locations
             const data = await fetchLocations();
             updateProgressBar();
-            await new Promise(resolve => setTimeout(resolve, 0)); // Pause to allow UI to update
-
 
             //filter data
             const latlngs = await filterData(data)
             updateProgressBar();
-            await new Promise(resolve => setTimeout(resolve, 0)); // Pause to allow UI to update
-
 
             //get owntracks stats
             getOwntracksStats(data);
 
             //drawing buffer
             if (latlngs.length > 1) {
+                let linestring;
 
                 if (data.features.length < 500) {
-                    setProgressBarNumSteps(7);
-
-                    const routeDrawing = await drawRoute(latlngs);
-
-                    if (routeDrawing == 0) {
-                        const linestring = await bufferComplexRoute(latlngs);
-                        const buffered = await drawBuffer(linestring, 0.01);
-                        updateProgressBar();
-                        await new Promise(resolve => setTimeout(resolve, 0)); // Pause to allow UI to update
-
-                        //get stats
-                        getCoverageStats(buffered, linestring);
-
-                    }
+                    linestring = await bufferComplexRoute(latlngs);
                 } else {
-                    setProgressBarNumSteps(6);
-                    const linestring = await bufferSimpleRoute(latlngs);
-                    updateProgressBar();
-                    await new Promise(resolve => setTimeout(resolve, 0)); // Pause to allow UI to update
-
-
-                    const buffered = await drawBuffer(linestring, 0.01);
-                    updateProgressBar();
-                    await new Promise(resolve => setTimeout(resolve, 0)); // Pause to allow UI to update
-
-
-                    //get stats
-                    getCoverageStats(buffered, linestring);
-
+                    linestring = await bufferSimpleRoute(latlngs);
                 }
+                updateProgressBar();
+
+                const buffered = await drawBuffer(linestring, 0.01);
+                updateProgressBar();
+
+                //get stats
+                getCoverageStats(buffered, linestring);
+                updateProgressBar();
 
             }
         }
@@ -135,6 +115,17 @@
             // Successfully retrieved data, hide login prompt
             closeForm();
 
+            //start date
+            console.log("Start date of OwnTracks data is " + data.features[0].properties.isotst.substring(0, 10));
+
+            //set start date filter to the first date in the data
+            document.getElementById('startBox').value = data.features[0].properties.isotst.substring(0, 10);
+            document.getElementById('endBox').value = new Date().toLocaleDateString('en-CA');
+
+            //total gps points
+            console.log("Total number of OwnTracks data points is " + data.features.length);
+
+
             let timeTaken = Date.now() - start;
             completeTask("fetching locations", timeTaken);
 
@@ -144,31 +135,6 @@
             setProgressBarError();  // Update progress bar with error state
             console.error('Fetch location error:', error);
         }
-    }
-
-    /**
-     * Draw the route on the map and buffer it using the complex route method. The complex route method uses the Leaflet Routing Machine to calculate the route and then buffers it using Turf.js.
-     * @param {Object} data - The data to filter
-     * @returns {Array} - The filtered data
-     */
-    async function bufferComplexRoute(latlngs) {
-        let start = Date.now();
-
-        //drawRoute(latlngs);
-
-        // Listen for the routesfound event
-        control.on('routesfound', function (e) {
-            var routes = e.routes;
-
-            // Create a lineString for buffering based on the actual route
-            var routeCoords = routes[0].coordinates.map(coord => [coord.lng, coord.lat]);
-            var lineString = turf.lineString(routeCoords);
-
-            let timeTaken = Date.now() - start;
-            completeTask("complex route drawing", timeTaken);
-
-            return lineString;
-        });
     }
 
     /**
@@ -192,7 +158,8 @@
             }
         }
 
-        const lineString = turf.lineString(processedLatlngs);
+
+        let lineString = turf.lineString(processedLatlngs);
 
         let timeTaken = Date.now() - start;
         completeTask("simple route drawing", timeTaken);
@@ -204,30 +171,44 @@
      * Draw the route on the map using Leaflet Routing Machine.
      * @param {Array} latlngs - The gps points to draw the route with
      */
-    async function drawRoute(latlngs) {
-
+    async function bufferComplexRoute(latlngs) {
         let start = Date.now();
 
-        control = L.routing.control({
-            waypoints: latlngs
-                //.filter((_, index) => index % qualityInverse === 0) // Filter to include only every other entry
-                .map(function (latlng) {
-                    return L.latLng(latlng[0], latlng[1]);
+        return new Promise((resolve, reject) => {
+            let control = L.routing.control({
+                waypoints: latlngs
+                    .map(function (latlng) {
+                        return L.latLng(latlng[0], latlng[1]);
+                    }),
+                router: L.Routing.osrmv1({
+                    serviceUrl: '/proxy',
+                    profile: 'car', // or 'bike', 'foot' depending on your needs
                 }),
-            router: L.Routing.osrmv1({
-                serviceUrl: '/proxy',
-                profile: 'car', // or 'bike', 'foot' depending on your needs
-            }),
-            routeWhileDragging: true,
-            createMarker: function () { return null; }, // Disable default marker
-        }).addTo(map);
+                routeWhileDragging: true,
+                createMarker: function () { return null; }, // Disable default marker
+            }).addTo(map);
 
-        control.hide(); // hide top right panel
+            control.hide(); // hide top right panel
 
-        let timeTaken = Date.now() - start;
-        completeTask("route drawing", timeTaken);
+            control.on('routesfound', function (e) {
+                let routes = e.routes;
 
-        return 0;
+                // Create a lineString for buffering based on the actual route
+                let routeCoords = routes[0].coordinates.map(coord => [coord.lng, coord.lat]);
+                let lineString = turf.lineString(routeCoords);
+
+                let timeTaken = Date.now() - start;
+                completeTask("complex route drawing", timeTaken);
+
+                // Resolve the promise with the lineString
+                resolve(lineString);
+            });
+
+            // Handle errors if needed
+            control.on('routingerror', function (error) {
+                reject(new Error("Routing failed: " + error.message));
+            });
+        });
     }
 
     /**
