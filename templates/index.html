@@ -36,6 +36,7 @@
 
 
     var control;
+    var latlngs;
     // Initialize the map
     var map = L.map('map').setView([37.7749, -122.4194], 13);
 
@@ -44,6 +45,51 @@
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
 
+    function runTasks() {
+        // find users and devices, then calculate route for the first entry
+        getUsersAndDevices().then(usersAndDevices => {
+
+            // if no users, not logged in
+            if (usersAndDevices != -1) {
+
+                //locations
+                fetchLocations();
+
+                //filter data
+                filterData(data)
+
+                //get owntracks stats
+                getOwntracksStats(highestAltitude, highestVelocity);
+
+                //drawing buffer
+                if (latlngs.length > 1) {
+
+                    if (data.features.length < 500) {
+                        setProgressBarNumSteps(7);
+
+                        bufferComplexRoute(latlngs);
+
+                        drawRoute(latlngs);
+
+                    } else {
+                        setProgressBarNumSteps(6);
+                        bufferSimpleRoute(latlngs);
+
+                    }
+
+
+                    //add buffer to map
+                    drawBuffer(linestring, 0.5);
+
+                    //get stats
+                    getCoverageStats(buffered, simplifiedLineString);
+
+                }
+
+            }
+
+        });
+    }
 
     /**
      * Fetch the users and devices from the server. This function is called after get user and device data succeeds. It attempts to pull the GPS data from the OwnTracks server and calls other methods to draw and handle extra details.
