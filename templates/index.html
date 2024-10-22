@@ -46,19 +46,14 @@
     }).addTo(map);
 
     async function runTasks() {
+        //how many steps to progress bar
         setProgressBarNumSteps(7);
-        // find users and devices, then calculate route for the first entry
+        
+        //check if logged in
+        const loggedIn = await checkIfLoggedIn();
 
-        const usersAndDevices = await getUsersAndDevices();
-
-        if (usersAndDevices != -1) {
-            const loggedIn = await checkIfLoggedIn();
-            if (loggedIn) {
-                // Successfully retrieved data, hide login prompt
-                closeForm();
-            }else{
-                openForm();
-            }
+        if (loggedIn) {
+            closeForm();
             updateProgressBar();
 
             //locations
@@ -76,6 +71,7 @@
             if (latlngs.length > 1) {
                 let linestring;
 
+                //complex route buffer can only handle 500 points or less
                 if (data.features.length < 500) {
                     linestring = await bufferComplexRoute(latlngs);
                 } else {
@@ -91,6 +87,8 @@
                 updateProgressBar();
 
             }
+        } else {
+            openForm();
         }
     }
 
