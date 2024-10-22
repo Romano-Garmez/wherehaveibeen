@@ -5,10 +5,6 @@ const minDistance = .5; // Adjust the distance threshold in kilometers (10 meter
 let highestAltitude = 0;
 let highestVelocity = 0;
 
-let tasksDone = [];
-let progressBarNumSteps = 5;
-let progressBarError = false;
-
 function debuggingTest() {
     const point1 = { lat: 36.983253, lng: -121.970049 };
     const point2 = { lat: 36.983237, lng: -121.969948 };
@@ -18,15 +14,61 @@ function debuggingTest() {
 }
 
 /**
+     * Fetch the users and devices from the server. This function is called after get user and device data succeeds. It attempts to pull the GPS data from the OwnTracks server and calls other methods to draw and handle extra details.
+     */
+async function fetchLocations() {
+    let start = Date.now();
+
+    try {
+        // Build the query parameters
+        const queryParams = new URLSearchParams({
+            startdate: document.getElementById('startBox').value,
+            enddate: document.getElementById('endBox').value,
+            user: document.getElementById('userBox').value,
+            device: document.getElementById('deviceBox').value
+        }).toString();
+
+        // Make the fetch request
+        const response = await fetch(`/locations?${queryParams}`);
+
+        // Check if response is not OK
+        if (!response.ok) {
+            setProgressBarError();  // Update progress bar with error state
+            throw new Error('Error fetching location data. Are you logged in?');
+        }
+
+        // Parse the response JSON
+        const data = await response.json();
+
+        //start date
+        console.log("Start date of OwnTracks data is " + data.features[0].properties.isotst.substring(0, 10));
+
+        //set start date filter to the first date in the data
+        document.getElementById('startBox').value = data.features[0].properties.isotst.substring(0, 10);
+        document.getElementById('endBox').value = new Date().toLocaleDateString('en-CA');
+
+        //total gps points
+        console.log("Total number of OwnTracks data points is " + data.features.length);
+
+
+        let timeTaken = Date.now() - start;
+        completeTask("fetching locations", timeTaken);
+
+        // Return the fetched data
+        return data;
+    } catch (error) {
+        setProgressBarError();  // Update progress bar with error state
+        console.error('Fetch location error:', error);
+    }
+}
+
+/**
  * Handles OwnTracks GPS points pulled from server and cleans them up. Skips data points with inaccurate coordinates, and notes the highest altitude and velocity.
  * @param {*} data GPS data from OwnTracks
  * @returns 
  */
-function filterData(data) {
+async function filterData(data) {
     let start = Date.now();
-
-    let highestAltitude = 0;
-    let highestVelocity = 0;
 
     let latlngs = [];
 
@@ -56,15 +98,6 @@ function filterData(data) {
                     // Always add the first point
                     latlngs.push([lat, lng]);
                 }
-
-                if (feature.properties.alt > highestAltitude) {
-                    highestAltitude = feature.properties.alt;
-                }
-                if (feature.properties.vel > highestVelocity) {
-                    highestVelocity = feature.properties.vel;
-                }
-
-
             }
         }
     });
@@ -72,25 +105,9 @@ function filterData(data) {
     let timeTaken = Date.now() - start;
     completeTask("filtering data", timeTaken);
 
-    setTimeout(() => {
-        getOwntracksStats(highestAltitude, highestVelocity);
-    }, 50);
-
     return latlngs;
-
 }
 
-function addPopup(lat, lng, feature) {
-    //Add marker to the map (recommended only for small datasets, quite laggy)
-    L.marker([lat, lng]).addTo(map)
-        .bindPopup(`<b>${feature.properties.name}</b><br>Velocity: ${feature.properties.vel} km/h` +
-            `<br>Altitude: ${feature.properties.alt} m` +
-            `<br>Acceleration: ${feature.properties.acc} m/s²` +
-            `<br>Time: ${feature.properties.isotst}` +
-            `<br>Accuracy: ${feature.properties.acc} m` +
-            `<br>Latitude: ` + lat + `°` +
-            `<br>Longitude: ` + lng + `°`);
-}
 
 // Haversine formula to calculate distance between two lat/lng points
 function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
@@ -110,77 +127,6 @@ function deg2rad(deg) {
 }
 
 /**
- * Mark a task complete and update the progress bar. Prints to console with what task finished and how long it took to complete.
- * @param {*} task 
- * @param {*} timeTaken 
- */
-function completeTask(task, timeTaken) {
-    tasksDone.push(task);
-    console.log("Task " + task + " completed in " + timeTaken + " milliseconds");
-
-    // Allow the browser to repaint after the task completes
-    setTimeout(updateProgressBar, 0);
-}
-
-/**
- * Return num of completed tasks
- * @returns number of completed tasks
- */
-function getNumTasksDone() {
-    return tasksDone.length;
-}
-
-/**
- * Updates the progress bar based on the number of tasks completed
- * Changes color based on status
- */
-function updateProgressBar() {
-    console.log("Updating progress bar with value " + getNumTasksDone());
-
-    let totalTasks = progressBarNumSteps;
-
-    let progress = Math.round((getNumTasksDone() / totalTasks) * 100);
-
-    document.getElementById("progressBarInner").style.width = progress + "%";
-
-    if (progressBarError) {
-        document.getElementById("progressBarInner").style.backgroundColor = "#FF0000";
-    }
-    else if (progress == 100) {
-        document.getElementById("progressBarInner").style.backgroundColor = "#04AA6D";
-    }
-    else {
-        document.getElementById("progressBarInner").style.backgroundColor = "#4870AF";
-    }
-
-}
-
-/**
- * Set how many tasks are required for "complete" status of progress bar, so far it's 5 for simple route planner and 6 for complex. 
- * Complex has the extra step of drawing the route.
- * @param {*} num 
- */
-function setProgressBarNumSteps(num) {
-    progressBarNumSteps = num;
-}
-
-/**
- * Set the progress bar to error status
- */
-function setProgressBarError() {
-    progressBarError = true;
-}
-
-/**
- * Reset the progress bar to 0%
- */
-function resetProgressBar() {
-    tasksDone = [];
-    progressBarError = false;
-    updateProgressBar();
-}
-
-/**
  * Returns the highest altitude from the OwnTracks data
  * 
  */
@@ -194,61 +140,6 @@ function getHighestAltitude() {
  */
 function getHighestVelocity() {
     return highestVelocity;
-}
-
-/**
- * Contacts the OwnTracks server to see what users and devices have been uploading data
- * @param {*} data
- * @returns
- * 
- */
-async function getUsersAndDevices() {
-    return fetch('/usersdevices')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Error fetching users and devices. Are you logged in?`);
-            }
-            return response.json();  // Parse the JSON from the response
-        })
-        .then(data => {
-
-
-            // Iterate through the data and populate the sets
-            let select = document.getElementById("userBox");
-            select.innerHTML = '';
-
-            select = document.getElementById("deviceBox");
-            select.innerHTML = '';
-
-            let el;
-
-            data.forEach(entry => {
-                if (entry.username) {
-                    select = document.getElementById("userBox");
-
-                    el = document.createElement("option");
-                    el.textContent = entry.username;
-                    el.value = entry.username;
-                    select.appendChild(el);
-                }
-                if (entry.device) {
-                    select = document.getElementById("deviceBox");
-
-                    el = document.createElement("option");
-                    el.textContent = entry.device;
-                    el.value = entry.device;
-                    select.appendChild(el);
-                }
-            });
-
-            return 0;
-
-        })
-        .catch(error => {
-            console.error('Fetch users and devices error:', error);
-            return -1;
-        });
-
 }
 
 /**
@@ -276,8 +167,21 @@ function getCoverageStats(buffered, lineString) {
     completeTask("coverage stats", timeTaken);
 }
 
-function getOwntracksStats(highestAltitude, highestVelocity) {
+function getOwntracksStats(data) {
     let start = Date.now();
+
+    let highestAltitude = 0;
+    let highestVelocity = 0;
+
+    data.features.forEach(feature => {
+        if (feature.properties.alt > highestAltitude) {
+            highestAltitude = feature.properties.alt;
+        }
+        if (feature.properties.vel > highestVelocity) {
+            highestVelocity = feature.properties.vel;
+        }
+    });
+
 
     //highest altitude
     document.getElementById('highestAltitude').innerHTML = "<p>" + highestAltitude + "m or " + Math.round((highestAltitude * 3.281) * 100) / 100 + "ft</p>";
@@ -287,60 +191,4 @@ function getOwntracksStats(highestAltitude, highestVelocity) {
 
     let timeTaken = Date.now() - start;
     completeTask("OwnTracks stats", timeTaken);
-}
-
-/**
- * Clears and redraws map with new data
- * @param {*} user
- * @param {*} device
- * @returns
- */
-function filterMap() {
-    console.log("Filtering map");
-
-    try {
-        resetProgressBar();
-        eraseLayers();
-    }
-    catch (err) {
-        console.log("No map data to erase, err: " + err);
-    }
-
-
-    //Remake route
-    // Add a tile layer
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    }).addTo(map);
-
-    // get new data
-    fetchLocations();
-}
-
-// Function to erase the route from the map
-function eraseRoute() {
-    map.removeControl(control);
-}
-
-// Function to erase all layers from the map
-function eraseLayers() {
-    map.eachLayer((layer) => {
-        layer.remove();
-    });
-}
-
-/**
- * Shows the login prompt
- */
-function openForm() {
-    document.getElementById("myForm").style.display = "block";
-    document.getElementById("sign_out").style.display = "none"
-}
-
-/**
- * Closes the login prompt
- */
-function closeForm() {
-    document.getElementById("myForm").style.display = "none";
-    document.getElementById("sign_out").style.display = "block";
 }
