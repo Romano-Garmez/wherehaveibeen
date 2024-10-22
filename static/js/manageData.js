@@ -9,6 +9,8 @@ let tasksDone = [];
 let progressBarNumSteps = 5;
 let progressBarError = false;
 
+let loggedIn = false;
+
 function debuggingTest() {
     const point1 = { lat: 36.983253, lng: -121.970049 };
     const point2 = { lat: 36.983237, lng: -121.969948 };
@@ -91,6 +93,13 @@ function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
 
 function deg2rad(deg) {
     return deg * (Math.PI / 180);
+}
+
+function checkIfLoggedIn(){
+    if (loggedIn){
+        completeTask("logged in", 0);
+    }
+    return loggedIn;
 }
 
 /**
@@ -194,6 +203,7 @@ async function getUsersAndDevices() {
 
         if (!response.ok) {
             throw new Error('Error fetching users and devices. Are you logged in?');
+            loggedIn = false;
         }
 
         const data = await response.json(); // Parse the JSON from the response
@@ -225,11 +235,13 @@ async function getUsersAndDevices() {
                 select.appendChild(el);
             }
         });
+        loggedIn = true;
 
         return 0;  // Return 0 if everything is successful
 
     } catch (error) {
         console.error('Fetch users and devices error:', error);
+        loggedIn = false;
         return -1; // Return -1 in case of an error
     }
 }
@@ -291,8 +303,8 @@ function getOwntracksStats(data) {
  * @param {*} device
  * @returns
  */
-function filterMap() {
-    console.log("Filtering map");
+function resetMap() {
+    console.log("Resetting map");
 
     try {
         resetProgressBar();
