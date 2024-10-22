@@ -189,52 +189,49 @@ function getHighestVelocity() {
  * 
  */
 async function getUsersAndDevices() {
-    return fetch('/usersdevices')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`Error fetching users and devices. Are you logged in?`);
+    try {
+        const response = await fetch('/usersdevices');
+
+        if (!response.ok) {
+            throw new Error('Error fetching users and devices. Are you logged in?');
+        }
+
+        const data = await response.json(); // Parse the JSON from the response
+
+        // Iterate through the data and populate the sets
+        let select = document.getElementById("userBox");
+        select.innerHTML = '';
+
+        select = document.getElementById("deviceBox");
+        select.innerHTML = '';
+
+        let el;
+
+        data.forEach(entry => {
+            if (entry.username) {
+                select = document.getElementById("userBox");
+
+                el = document.createElement("option");
+                el.textContent = entry.username;
+                el.value = entry.username;
+                select.appendChild(el);
             }
-            return response.json();  // Parse the JSON from the response
-        })
-        .then(data => {
+            if (entry.device) {
+                select = document.getElementById("deviceBox");
 
-
-            // Iterate through the data and populate the sets
-            let select = document.getElementById("userBox");
-            select.innerHTML = '';
-
-            select = document.getElementById("deviceBox");
-            select.innerHTML = '';
-
-            let el;
-
-            data.forEach(entry => {
-                if (entry.username) {
-                    select = document.getElementById("userBox");
-
-                    el = document.createElement("option");
-                    el.textContent = entry.username;
-                    el.value = entry.username;
-                    select.appendChild(el);
-                }
-                if (entry.device) {
-                    select = document.getElementById("deviceBox");
-
-                    el = document.createElement("option");
-                    el.textContent = entry.device;
-                    el.value = entry.device;
-                    select.appendChild(el);
-                }
-            });
-
-            return 0;
-
-        })
-        .catch(error => {
-            console.error('Fetch users and devices error:', error);
-            return -1;
+                el = document.createElement("option");
+                el.textContent = entry.device;
+                el.value = entry.device;
+                select.appendChild(el);
+            }
         });
 
+        return 0;  // Return 0 if everything is successful
+
+    } catch (error) {
+        console.error('Fetch users and devices error:', error);
+        return -1; // Return -1 in case of an error
+    }
 }
 
 /**

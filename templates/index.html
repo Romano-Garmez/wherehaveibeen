@@ -219,22 +219,16 @@
     async function drawBuffer(lineString, tolerance) {
         let start = Date.now();
 
-        // Wait before heavy computation to allow UI updates
-        await new Promise(resolve => setTimeout(resolve, 0));
-
         // Get the circle size from the UI
         const circleSize = document.getElementById('circleSize').value;
 
         // Simplify the route in chunks to avoid freezing the UI
-        let simplifiedLineString;
-        await new Promise(resolve => setTimeout(() => {
-            simplifiedLineString = turf.simplify(lineString, { tolerance: tolerance, highQuality: false });
-            resolve();
-        }, 0));
+        let simplifiedLineString = turf.simplify(lineString, { tolerance: tolerance, highQuality: false });
 
         // Add a short pause to ensure the UI updates before buffering
         await new Promise(resolve => setTimeout(resolve, 0));
 
+        //THIS IS THE LONG TASK
         // Buffer the simplified route with Turf.js in chunks
         let buffered;
         await new Promise(resolve => setTimeout(() => {
@@ -243,21 +237,14 @@
         }, 0));
 
         // Convert the buffer to GeoJSON and add it to the map
-        let bufferLayer;
-        await new Promise(resolve => setTimeout(() => {
-            bufferLayer = L.geoJSON(buffered, {
-                style: function () {
-                    return { color: 'rgba(0, 0, 255, 0.4)', weight: 2 };
-                }
-            }).addTo(map);
-            resolve();
-        }, 0));
+        let bufferLayer = L.geoJSON(buffered, {
+            style: function () {
+                return { color: 'rgba(0, 0, 255, 0.4)', weight: 2 };
+            }
+        }).addTo(map);
 
         let timeTaken = Date.now() - start;
         completeTask("buffer drawing", timeTaken);
-
-        // Add a short pause to let the UI update before fitting the map bounds
-        await new Promise(resolve => setTimeout(resolve, 0));
 
         // Adjust the map to fit the new buffer bounds
         const bounds = bufferLayer.getBounds();
@@ -266,8 +253,7 @@
         return buffered;
     }
 
-
-    // run on page load
+    //run on page load
     window.onload = function () {
 
         // find users and devices, then calculate route for the first entry
