@@ -53,7 +53,7 @@
 
         if (usersAndDevices != -1) {
             const loggedIn = await checkIfLoggedIn();
-            if (loggedIn == true) {
+            if (loggedIn) {
                 // Successfully retrieved data, hide login prompt
                 closeForm();
             }else{

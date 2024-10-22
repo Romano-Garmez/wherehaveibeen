@@ -95,8 +95,8 @@ function deg2rad(deg) {
     return deg * (Math.PI / 180);
 }
 
-function checkIfLoggedIn(){
-    if (loggedIn){
+function checkIfLoggedIn() {
+    if (loggedIn) {
         completeTask("logged in", 0);
     }
     return loggedIn;
@@ -202,8 +202,8 @@ async function getUsersAndDevices() {
         const response = await fetch('/usersdevices');
 
         if (!response.ok) {
-            throw new Error('Error fetching users and devices. Are you logged in?');
             loggedIn = false;
+            throw new Error('Error fetching users and devices. Are you logged in?');
         }
 
         const data = await response.json(); // Parse the JSON from the response
