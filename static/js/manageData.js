@@ -1,4 +1,6 @@
 //settings
+
+//skip points withing .5 km of the previous point
 const minDistance = .5; // Adjust the distance threshold in kilometers (10 meters for example)
 
 //stats

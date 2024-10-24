@@ -44,7 +44,6 @@ def setup():
 
 
 """Sign out by deleting cookie
-Actually just set the cookie to expire immediately
 """
 
 
