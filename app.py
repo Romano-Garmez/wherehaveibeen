@@ -121,11 +121,11 @@ def get_locations():
         # print(data)  # Print data to console
         return jsonify(data)
     except requests.HTTPError as http_err:
-        print(f"Locations: HTTP error occurred: {http_err}")
-        return jsonify({"error": str(http_err)}), 500
+        app.logger.error(f"Locations: HTTP error occurred: {http_err}")
+        return jsonify({"error": "An internal error has occurred."}), 500
     except Exception as err:
-        print(f"Locations: Other error occurred: {err}")
-        return jsonify({"error": str(err)}), 500
+        app.logger.error(f"Locations: Other error occurred: {err}")
+        return jsonify({"error": "An internal error has occurred."}), 500
 
 
 @app.route("/usersdevices")
@@ -142,11 +142,11 @@ def get_users_devices():
         # print(data)  # Print data to console
         return jsonify(data)
     except requests.HTTPError as http_err:
-        print(f"UsersAndDevices: HTTP error occurred: {http_err}")
-        return jsonify({"error": str(http_err)}), 500
+        app.logger.error(f"UsersAndDevices: HTTP error occurred: {http_err}")
+        return jsonify({"error": "An internal error has occurred."}), 500
     except Exception as err:
-        print(f"UsersAndDevices: Other error occurred: {err}")
-        return jsonify({"error": str(err)}), 500
+        app.logger.error(f"UsersAndDevices: Other error occurred: {err}")
+        return jsonify({"error": "An internal error has occurred."}), 500
 
 
 """Proxy all insecure requests to the insecure server
