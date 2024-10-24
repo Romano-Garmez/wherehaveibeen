@@ -13,6 +13,7 @@ from datetime import timedelta
 import os
 
 debug = False
+INTERNAL_ERROR_MESSAGE = "An internal error has occurred."
 
 if debug:
     # Load environment variables from .env file
@@ -120,12 +121,11 @@ def get_locations():
         data = response.json()
         # print(data)  # Print data to console
         return jsonify(data)
-    except requests.HTTPError as http_err:
-        app.logger.error(f"Locations: HTTP error occurred: {http_err}")
-        return jsonify({"error": "An internal error has occurred."}), 500
+    except requests.HTTPError:
+        return jsonify({"error": INTERNAL_ERROR_MESSAGE}), 500
     except Exception as err:
         app.logger.error(f"Locations: Other error occurred: {err}")
-        return jsonify({"error": "An internal error has occurred."}), 500
+        return jsonify({"error": INTERNAL_ERROR_MESSAGE}), 500
 
 
 @app.route("/usersdevices")
@@ -143,10 +143,10 @@ def get_users_devices():
         return jsonify(data)
     except requests.HTTPError as http_err:
         app.logger.error(f"UsersAndDevices: HTTP error occurred: {http_err}")
-        return jsonify({"error": "An internal error has occurred."}), 500
+        return jsonify({"error": INTERNAL_ERROR_MESSAGE}), 500
     except Exception as err:
         app.logger.error(f"UsersAndDevices: Other error occurred: {err}")
-        return jsonify({"error": "An internal error has occurred."}), 500
+        return jsonify({"error": INTERNAL_ERROR_MESSAGE}), 500
 
 
 """Proxy all insecure requests to the insecure server
