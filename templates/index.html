@@ -72,9 +72,11 @@
 
                 //complex route buffer can only handle 500 points or less
                 if (data.features.length < 500) {
-                    linestring = await bufferComplexRoute(latlngs);
+                    linestring = await calculateComplexRoute(latlngs);
+                } else if (data.features.length < 300) {
+                    linestring = await calculateSimpleRoute(latlngs);
                 } else {
-                    linestring = await bufferSimpleRoute(latlngs);
+                    linestring = await calculateNoRoute(latlngs);
                 }
                 updateProgressBar();
 

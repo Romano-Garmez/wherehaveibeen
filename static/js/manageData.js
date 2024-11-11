@@ -1,7 +1,7 @@
 //settings
 
 //skip points withing .5 km of the previous point
-const minDistance = .5; // Adjust the distance threshold in kilometers (10 meters for example)
+const minDistanceFilter = .5; // Adjust the distance threshold in kilometers (10 meters for example)
 
 //stats
 let highestAltitude = 0;
@@ -90,7 +90,7 @@ async function filterData(data) {
                     const dist = getDistanceFromLatLonInKm(lastPoint[0], lastPoint[1], lat, lng);
 
                     // Only add the point if it's farther than the minimum distance
-                    if (dist > minDistance) {
+                    if (dist > minDistanceFilter) {
                         latlngs.push([lat, lng]);
                         //addPopup(lat, lng, feature);
 

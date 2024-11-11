@@ -1,9 +1,57 @@
+const minDistanceRoute = 0.01; // 10 meters
+
 /**
      * Draw the route on the map and buffer it using the simple route method. The simple route method uses Turf.js to buffer the route without calculating the route.
      * @param {Object} data - The data to filter
      * @returns {Array} - The filtered data
      */
-async function bufferSimpleRoute(latlngs) {
+async function calculateNoRoute(latlngs) {
+    let start = Date.now();
+
+    await new Promise(resolve => setTimeout(resolve, 0)); // Allow UI to update
+
+    // Initialize an array to hold only the points that are sufficiently distant from each other
+    let processedLatlngs = [];
+
+    for (let i = 0; i < latlngs.length; i++) {
+        const currentPoint = [latlngs[i][1], latlngs[i][0]]; // [lng, lat]
+        let isFarEnough = true;
+
+        // Check distance against all included points
+        for (const includedPoint of processedLatlngs) {
+            const distance = turf.distance(turf.point(includedPoint), turf.point(currentPoint), { units: 'kilometers' });
+            if (distance < minDistanceRoute) {
+                isFarEnough = false;
+                break; // No need to check further if it's too close to any included point
+            }
+        }
+
+        // Add the current point if it's far enough from all previous points
+        if (isFarEnough) {
+            processedLatlngs.push(currentPoint);
+        }
+
+        // Every 100 iterations, yield control back to the browser to allow the UI to update
+        if (i % 100 === 0) {
+            await new Promise(resolve => setTimeout(resolve, 0));
+        }
+    }
+
+    // Create a lineString from the filtered list of points
+    let lineString = turf.lineString(processedLatlngs);
+
+    let timeTaken = Date.now() - start;
+    completeTask("no route calculation", timeTaken);
+
+    return lineString;
+}
+
+/**
+     * Draw the route on the map and buffer it using the simple route method. The simple route method uses Turf.js to buffer the route without calculating the route.
+     * @param {Object} data - The data to filter
+     * @returns {Array} - The filtered data
+     */
+async function calculateSimpleRoute(latlngs) {
     let start = Date.now();
 
     await new Promise(resolve => setTimeout(resolve, 0)); // Allow UI to update
@@ -23,7 +71,7 @@ async function bufferSimpleRoute(latlngs) {
     let lineString = turf.lineString(processedLatlngs);
 
     let timeTaken = Date.now() - start;
-    completeTask("simple route drawing", timeTaken);
+    completeTask("simple route calculation", timeTaken);
 
     return lineString;
 }
@@ -32,7 +80,7 @@ async function bufferSimpleRoute(latlngs) {
  * Draw the route on the map using Leaflet Routing Machine.
  * @param {Array} latlngs - The gps points to draw the route with
  */
-async function bufferComplexRoute(latlngs) {
+async function calculateComplexRoute(latlngs) {
     let start = Date.now();
 
     return new Promise((resolve, reject) => {
@@ -59,7 +107,7 @@ async function bufferComplexRoute(latlngs) {
             let lineString = turf.lineString(routeCoords);
 
             let timeTaken = Date.now() - start;
-            completeTask("complex route drawing", timeTaken);
+            completeTask("complex route calculation", timeTaken);
 
             // Resolve the promise with the lineString
             resolve(lineString);
