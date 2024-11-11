@@ -242,3 +242,47 @@ select {
 .dateFilters {
     padding-bottom: 5%;
 }
+
+/* Style for the info icon */
+.info-icon {
+    position: relative;
+    display: inline-block;
+    font-size: 16px;
+    color: #555;
+    background-color: #e0e0e0;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    text-align: center;
+    line-height: 20px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+/* Tooltip styling */
+.info-icon .tooltip-text {
+    visibility: hidden;
+    width: 200px;
+    background-color: #333;
+    color: #fff;
+    text-align: center;
+    padding: 8px;
+    border-radius: 4px;
+
+    /* Position the tooltip */
+    position: absolute;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1;
+
+    /* Fade-in effect */
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+/* Show the tooltip when hovering over the icon */
+.info-icon:hover .tooltip-text {
+    visibility: visible;
+    opacity: 1;
+}

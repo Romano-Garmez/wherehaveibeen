@@ -163,7 +163,7 @@ function getCoverageStats(buffered, lineString) {
 
     document.getElementById('totalArea').innerHTML = "<p>" + Math.round(area * 100) / 100 + "km² or " + Math.round((area / 1.609) * 100) / 100 + "mi²</p>";
 
-    document.getElementById('totalAreaPct').innerHTML = "<p>" + area / 863440 + "%" + "</p>";
+    document.getElementById('totalAreaPct').innerHTML = "<p>" + area / 863428 + "%" + "</p>";
 
     let timeTaken = Date.now() - start;
     completeTask("coverage stats", timeTaken);
