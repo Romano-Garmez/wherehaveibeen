@@ -1,11 +1,9 @@
-const minDistanceRoute = 0.01; // 10 meters
-
 /**
      * Draw the route on the map and buffer it using the simple route method. The simple route method uses Turf.js to buffer the route without calculating the route.
      * @param {Object} data - The data to filter
      * @returns {Array} - The filtered data
      */
-async function calculateNoRoute(latlngs) {
+async function calculateNoRoute(latlngs, minDistBetweenPoints=0.1) { //0.01 is 10m
     let start = Date.now();
 
     await new Promise(resolve => setTimeout(resolve, 0)); // Allow UI to update
@@ -20,7 +18,7 @@ async function calculateNoRoute(latlngs) {
         // Check distance against all included points
         for (const includedPoint of processedLatlngs) {
             const distance = turf.distance(turf.point(includedPoint), turf.point(currentPoint), { units: 'kilometers' });
-            if (distance < minDistanceRoute) {
+            if (distance < minDistBetweenPoints) {
                 isFarEnough = false;
                 break; // No need to check further if it's too close to any included point
             }
