@@ -62,6 +62,40 @@ async function getUsersAndDevices() {
     }
 }
 
+async function getUserSettings() {
+    try {
+        const response = await fetch('/get_settings');
+
+        if (!response.ok) {
+            loggedIn = false;
+            throw new Error('Error fetching settings. Are you logged in?');
+        }
+
+        const data = await response.json(); // Parse the JSON from the response
+
+        // Iterate through the data and populate the sets
+        let select = document.getElementById("osrmURL");
+        select.value = data.osrmURL;
+        console.log(data.osrmURL);
+
+        select = document.getElementById("circleSize");
+        console.log(data.circleSize);
+        if (data.circleSize != null) {
+            select.value = data.circleSize;
+        }else{
+            select.value=0.5;
+        }
+
+        loggedIn = true;
+
+        return 0;  // Return 0 if everything is successful
+    } catch (error) {
+        console.error('Fetch settings error:', error);
+        loggedIn = false;
+        return -1; // Return -1 in case of an error
+    }
+}
+
 /**
  * Shows the login prompt
  */

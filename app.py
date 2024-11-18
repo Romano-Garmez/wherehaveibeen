@@ -77,6 +77,36 @@ def login():
 
         return redirect("/")
 
+@app.route("/save_settings", methods=["POST"])
+def save_settings():
+    data = request.json
+    # Retrieve user inputs from the form
+    circle_size = data.get('circleSize')
+    osrm_url = data.get('osrmURL')
+
+    print("circle_size: ", circle_size)
+    print("osrm_url: ", osrm_url)
+
+    session.permanent = True
+
+    # Store information in the session
+    session["circleSize"] = circle_size
+    session["osrmURL"] = osrm_url
+
+    return jsonify({"message": "Settings saved successfully"})
+    
+@app.route("/get_settings")
+def get_settings():
+    circle_size = session.get("circleSize")
+    osrm_url = session.get("osrmURL")
+    print("circle_size: ", circle_size)
+    print("osrm_url: ", osrm_url)
+
+    return jsonify({
+        "circleSize": session.get("circleSize"),
+        "osrmURL": session.get("osrmURL")
+    })
+
 
 """Get OwnTracks data from server and return to client
 

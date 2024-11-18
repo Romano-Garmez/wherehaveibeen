@@ -101,6 +101,9 @@
     //run on page load
     window.onload = function () {
 
+        //load user settings
+        getUserSettings();
+
         // find users and devices, then calculate route for the first entry
         getUsersAndDevices().then(usersAndDevices => {
 
@@ -174,7 +177,8 @@
             <input type="button" class="btn btn-danger" value="Remove Route" onclick="eraseRoute(map)" />
 
             <h5>Buffer Size <span class="info-icon">i
-                    <span class="tooltip-text">Change how large of a buffer is drawn around your route in kilometers.
+                    <span class="tooltip-text">Change how large of a buffer is drawn around your route in
+                        kilometers.
                         Note that larger values take longer to draw.</span>
                 </span></h5>
 
@@ -190,7 +194,7 @@
             <input type="url" class="form-control form-control-lg" id="osrmURL" value="" />
 
             <h4>Save and Apply Settings</h4>
-            <input type="button" class="btn btn-primary" value="Apply" onclick="resetMap(map)" />
+            <input type="button" class="btn btn-primary" value="Apply" id="applySettingsButton" onclick="resetMap(map)" />
         </div>
     </div>
     <div id="rightPanel">
@@ -230,7 +234,30 @@
 {% block scripts %}
 
 <script>
+document.getElementById('applySettingsButton').addEventListener('click', function() {
+    const circleSize = document.getElementById('circleSize').value;
+    const osrmURL = document.getElementById('osrmURL').value;
 
+    fetch('/save_settings', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            circleSize: circleSize,
+            osrmURL: osrmURL
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Settings saved:', data);
+        // Optionally, you can call resetMap(map) here if needed
+        resetMap(map);
+    })
+    .catch((error) => {
+        console.error('Error:', error);
+    });
+});
 
 </script>
 
