@@ -159,19 +159,33 @@ we don't have to
 """
 
 
-@app.route("/proxy/<path:url>", methods=["GET"])
-def proxy_route(url):
+@app.route("/proxy", methods=["GET"])
+def proxy_route():
     print("Proxying request to insecure server")
 
+    osrm_url = request.args.get('osrmURL')
+    coords = request.args.get('coords') 
+    coords = coords[1:]
+
+
+    print("coords: ", coords)
+
+    target_url = ""
     # Construct the URL you want to forward the request to
-    target_url = f"http://mini.romangarms.com:5001/route/v1/{url}"
+    if osrm_url:
+        target_url = f"{osrm_url}/route/v1/{coords}"
+        print("using custom osrm url")
+    else:
+        target_url = f"http://mini.romangarms.com:5001/route/v1/{coords}"
+        print("using default osrm url")
 
     print("target_url is ", target_url)
 
     # Forward the request to the insecure server
     response = requests.get(target_url)
 
-    print("response is ", response)
+    print("response status code: ", response.status_code)
+    print("response content: ", response.content)
 
     # Return the response back to the client
     return jsonify(response.json())

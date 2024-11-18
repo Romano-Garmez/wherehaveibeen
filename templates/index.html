@@ -78,9 +78,9 @@
                     linestring = await calculateComplexRoute(latlngs);
                 } else if (data.features.length < 3000) {
                     linestring = await calculateSimpleRoute(latlngs);
-                } else if (data.features.length < 10000) {
+                } else if (data.features.length < 5000) {
                     linestring = await calculateNoRoute(latlngs, 0.01);
-                }else{
+                } else {
                     linestring = await calculateNoRoute(latlngs, 0.1);
                 }
                 updateProgressBar();
@@ -164,17 +164,30 @@
 
         <div class="innerPanel">
             <h1>Visual settings</h1>
-            <p class="settingInfo">Hide the red route drawn on the map. The route is only drawn when less than 500 GPS
-                points are used. Adjust the date filters to see this!</p>
+
+            <h5>Hide Route <span class="info-icon">i
+                    <span class="tooltip-text">The route is only drawn when less than 500 GPS
+                        points are used. Adjust the date filters to see this!</span>
+                </span></h5>
+            <p class="settingInfo">Hide the red route drawn on the map.</p>
 
             <input type="button" class="btn btn-danger" value="Remove Route" onclick="eraseRoute(map)" />
 
-            <h5>Buffer Size </h5>
-            <p class="settingInfo">Change how large of a buffer is drawn around your route in kilometers. Note that
-                larger values take
-                longer to draw. Default: 0.5km</p>
+            <h5>Buffer Size <span class="info-icon">i
+                    <span class="tooltip-text">Change how large of a buffer is drawn around your route in kilometers.
+                        Note that larger values take longer to draw.</span>
+                </span></h5>
+
+            <p class="settingInfo">Default: 0.5km</p>
             <input type="number" class="form-control form-control-lg" id="circleSize" value="0.5" step="0.1" min="0.1"
                 max="10" />
+
+            <h5>Custom OSRM Router <span class="info-icon">i
+                    <span class="tooltip-text">Change the URL used for the OSRM router</span>
+                </span></h5>
+
+            <p class="settingInfo">Default: leave blank</p>
+            <input type="url" class="form-control form-control-lg" id="osrmURL" value="" />
 
             <h4>Save and Apply Settings</h4>
             <input type="button" class="btn btn-primary" value="Apply" onclick="resetMap(map)" />
@@ -189,7 +202,8 @@
 
 
         <h4>Total distance driven <span class="info-icon">i
-                <span class="tooltip-text">Note! This can be quite inaccurate over a large date range as there are some shortcuts in this calculation.</span>
+                <span class="tooltip-text">Note! This can be quite inaccurate over a large date range as there are some
+                    shortcuts in this calculation.</span>
             </span> </h4>
         <div id="totalDist"> </div>
 
@@ -197,8 +211,9 @@
         <div id="totalArea"></div>
 
         <h4>Percentage of west coast covered <span class="info-icon">i
-            <span class="tooltip-text">Calculated by dividing your area explored by 863,428km, the area of Washington, Oregon, and California.</span>
-        </span> </h4>
+                <span class="tooltip-text">Calculated by dividing your area explored by 863,428km, the area of
+                    Washington, Oregon, and California.</span>
+            </span> </h4>
         <div id="totalAreaPct"></div>
 
         <h4>Highest Altitude</h4>
