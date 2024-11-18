@@ -179,6 +179,10 @@ def proxy_route():
         target_url = f"http://mini.romangarms.com:5001/route/v1/{coords}"
         print("using default osrm url")
 
+    if target_url.endswith("?overview=false"):
+        target_url = target_url.replace("?overview=false", "")
+    
+    
     print("target_url is ", target_url)
 
     # Forward the request to the insecure server
