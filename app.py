@@ -77,6 +77,28 @@ def login():
 
         return redirect("/")
 
+@app.route("/save_settings", methods=["POST"])
+def save_settings():
+    data = request.json
+    # Retrieve user inputs from the form
+    circle_size = data.get('circleSize')
+    osrm_url = data.get('osrmURL')
+
+    session.permanent = True
+
+    # Store information in the session
+    session["circle_size"] = circle_size
+    session["osrm_url"] = osrm_url
+
+    return jsonify({"message": "Settings saved successfully"})
+    
+@app.route("/get_settings")
+def get_settings():
+    return jsonify({
+        "circleSize": session.get("circle_size"),
+        "osrmURL": session.get("osrm_url")
+    })
+
 
 """Get OwnTracks data from server and return to client
 
@@ -103,9 +125,9 @@ def get_locations():
         device = request.args.get("device")
 
         if start_date:
-            params["from"] = start_date + "T01:00:00.000Z"
+            params["from"] = start_date + "T00:00:00.000Z"
         if end_date:
-            params["to"] = end_date + "T23:59:59.000Z"
+            params["to"] = end_date + "T23:59:59.999Z"
         if user:
             params["user"] = user
         if device:
@@ -159,19 +181,37 @@ we don't have to
 """
 
 
-@app.route("/proxy/<path:url>", methods=["GET"])
-def proxy_route(url):
+@app.route("/proxy", methods=["GET"])
+def proxy_route():
     print("Proxying request to insecure server")
 
-    # Construct the URL you want to forward the request to
-    target_url = f"http://mini.romangarms.com:5001/route/v1/{url}"
+    osrm_url = request.args.get('osrmURL')
+    coords = request.args.get('coords') 
+    coords = coords[1:]
 
+
+    #print("coords: ", coords)
+
+    target_url = ""
+    # Construct the URL you want to forward the request to
+    if osrm_url:
+        target_url = f"{osrm_url}/route/v1/{coords}"
+        print("using custom osrm url")
+    else:
+        target_url = f"http://mini.romangarms.com:5001/route/v1/{coords}"
+        print("using default osrm url")
+
+    if target_url.endswith("?overview=false"):
+        target_url = target_url.replace("?overview=false", "")
+    
+    
     print("target_url is ", target_url)
 
     # Forward the request to the insecure server
     response = requests.get(target_url)
 
-    print("response is ", response)
+    print("response status code: ", response.status_code)
+    #print("response content: ", response.content)
 
     # Return the response back to the client
     return jsonify(response.json())

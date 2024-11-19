@@ -80,6 +80,18 @@ async function calculateSimpleRoute(latlngs) {
  */
 async function calculateComplexRoute(latlngs) {
     let start = Date.now();
+    const osrmRouter = document.getElementById('osrmURL').value;
+
+    if (osrmRouter != "") {
+        console.log("Using custom OSRM router: " + osrmRouter);
+    }else{
+        console.log("Using default OSRM router");
+    }
+
+    // Construct the service URL
+    const serviceUrl = `/proxy?osrmURL=${encodeURIComponent(osrmRouter)}&coords=`;
+
+    console.log("Service URL: ", serviceUrl);
 
     return new Promise((resolve, reject) => {
         let control = L.routing.control({
@@ -88,10 +100,10 @@ async function calculateComplexRoute(latlngs) {
                     return L.latLng(latlng[0], latlng[1]);
                 }),
             router: L.Routing.osrmv1({
-                serviceUrl: '/proxy',
+                serviceUrl: serviceUrl,
                 profile: 'car', // or 'bike', 'foot' depending on your needs
             }),
-            routeWhileDragging: true,
+            routeWhileDragging: false,
             createMarker: function () { return null; }, // Disable default marker
         }).addTo(map);
 
