@@ -194,7 +194,8 @@
             <input type="url" class="form-control form-control-lg" id="osrmURL" value="" />
 
             <h4>Save and Apply Settings</h4>
-            <input type="button" class="btn btn-primary" value="Apply" id="applySettingsButton" onclick="resetMap(map)" />
+            <input type="button" class="btn btn-primary" value="Apply" id="applySettingsButton"
+                onclick="resetMap(map)" />
         </div>
     </div>
     <div id="rightPanel">
@@ -234,30 +235,25 @@
 {% block scripts %}
 
 <script>
-document.getElementById('applySettingsButton').addEventListener('click', function() {
-    const circleSize = document.getElementById('circleSize').value;
-    const osrmURL = document.getElementById('osrmURL').value;
-
-    fetch('/save_settings', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            circleSize: circleSize,
-            osrmURL: osrmURL
+    document.getElementById('applySettingsButton').addEventListener('click', function () {
+        fetch('/save_settings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                circleSize: document.getElementById('circleSize').value,
+                osrmURL: document.getElementById('osrmURL').value
+            })
         })
-    })
-    .then(response => response.json())
-    .then(data => {
-        console.log('Settings saved:', data);
-        // Optionally, you can call resetMap(map) here if needed
-        resetMap(map);
-    })
-    .catch((error) => {
-        console.error('Error:', error);
+            .then(response => response.json())
+            .then(data => {
+                console.log('Settings saved:', data);
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
     });
-});
 
 </script>
 
