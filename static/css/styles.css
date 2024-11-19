@@ -243,6 +243,11 @@ select {
     padding-bottom: 5%;
 }
 
+.time-period-btn{
+    width: 24%;
+    font-size: small;
+}
+
 /* Style for the info icon */
 .info-icon {
     position: relative;

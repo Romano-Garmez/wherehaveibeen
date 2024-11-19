@@ -84,27 +84,19 @@ def save_settings():
     circle_size = data.get('circleSize')
     osrm_url = data.get('osrmURL')
 
-    print("circle_size: ", circle_size)
-    print("osrm_url: ", osrm_url)
-
     session.permanent = True
 
     # Store information in the session
-    session["circleSize"] = circle_size
-    session["osrmURL"] = osrm_url
+    session["circle_size"] = circle_size
+    session["osrm_url"] = osrm_url
 
     return jsonify({"message": "Settings saved successfully"})
     
 @app.route("/get_settings")
 def get_settings():
-    circle_size = session.get("circleSize")
-    osrm_url = session.get("osrmURL")
-    print("circle_size: ", circle_size)
-    print("osrm_url: ", osrm_url)
-
     return jsonify({
-        "circleSize": session.get("circleSize"),
-        "osrmURL": session.get("osrmURL")
+        "circleSize": session.get("circle_size"),
+        "osrmURL": session.get("osrm_url")
     })
 
 
@@ -133,9 +125,9 @@ def get_locations():
         device = request.args.get("device")
 
         if start_date:
-            params["from"] = start_date + "T01:00:00.000Z"
+            params["from"] = start_date + "T00:00:00.000Z"
         if end_date:
-            params["to"] = end_date + "T23:59:59.000Z"
+            params["to"] = end_date + "T23:59:59.999Z"
         if user:
             params["user"] = user
         if device:
@@ -198,7 +190,7 @@ def proxy_route():
     coords = coords[1:]
 
 
-    print("coords: ", coords)
+    #print("coords: ", coords)
 
     target_url = ""
     # Construct the URL you want to forward the request to
@@ -219,7 +211,7 @@ def proxy_route():
     response = requests.get(target_url)
 
     print("response status code: ", response.status_code)
-    print("response content: ", response.content)
+    #print("response content: ", response.content)
 
     # Return the response back to the client
     return jsonify(response.json())

@@ -7,6 +7,8 @@ const minDistanceFilter = .5; // Adjust the distance threshold in kilometers (10
 let highestAltitude = 0;
 let highestVelocity = 0;
 
+let firstLoad = true;
+
 function debuggingTest() {
     const point1 = { lat: 36.983253, lng: -121.970049 };
     const point2 = { lat: 36.983237, lng: -121.969948 };
@@ -47,7 +49,11 @@ async function fetchLocations() {
 
         //set start date filter to the first date in the data
         document.getElementById('startBox').value = data.features[0].properties.isotst.substring(0, 10);
+
+        if (firstLoad) {
         document.getElementById('endBox').value = new Date().toLocaleDateString('en-CA');
+        firstLoad = false;
+        }
 
         //total gps points
         console.log("Total number of OwnTracks data points is " + data.features.length);
@@ -62,6 +68,36 @@ async function fetchLocations() {
         setProgressBarError();  // Update progress bar with error state
         console.error('Fetch location error:', error);
     }
+}
+
+function changeDateRange(timeframe) {
+    let start;
+    let end;
+
+    switch (timeframe) {
+        case "month":
+            start = new Date(new Date().setMonth(new Date().getMonth() - 1)).toLocaleDateString('en-CA');
+            end = new Date().toLocaleDateString('en-CA');
+            break;
+        case "week":
+            start = new Date(new Date().setDate(new Date().getDate() - 7)).toLocaleDateString('en-CA');
+            end = new Date().toLocaleDateString('en-CA');
+            break;
+        case "day":
+            start = new Date(new Date().setDate(new Date().getDate() - 1)).toLocaleDateString('en-CA');
+            end = new Date(new Date().setDate(new Date().getDate() - 1)).toLocaleDateString('en-CA');
+            break;
+        case "today":
+            start = new Date().toLocaleDateString('en-CA');
+            end = new Date().toLocaleDateString('en-CA');
+            break;
+    }
+    document.getElementById('endBox').value = end;
+    document.getElementById('startBox').value = start;
+
+    console.log(`Start date: ${start}, End date: ${end}`);
+
+    resetMap();
 }
 
 /**

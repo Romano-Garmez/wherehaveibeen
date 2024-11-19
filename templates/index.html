@@ -155,6 +155,10 @@
                 <input type="date" class="input-group date" id="endBox" onkeyup="" name="trip-start" value="2099-12-31"
                     min="2015-01-01" max="2099-12-31" />
             </div>
+            <input type="button" class="btn btn-primary time-period-btn" value="Last Month" onclick="changeDateRange('month')" />
+            <input type="button" class="btn btn-primary time-period-btn" value="Last Week" onclick="changeDateRange('week')" />
+            <input type="button" class="btn btn-primary time-period-btn" value="Yesterday" onclick="changeDateRange('day')" />
+            <input type="button" class="btn btn-primary time-period-btn" value="Today" onclick="changeDateRange('today')" />
 
             <h4>Save and Apply Settings</h4>
             <input type="button" class="btn btn-primary" value="Apply" onclick="resetMap(map)" />
