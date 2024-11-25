@@ -95,6 +95,16 @@ body {
     box-shadow: 0px 0px 10px 5px rgba(0, 0, 0, 0.15);
 }
 
+.titlePanel{
+    margin: auto;
+}
+
+.subPanel{
+    margin-top: 2%;
+    padding: 2%;
+    outline: 1px solid #f1f1f1;
+}
+
 #leftPanel:has(.innerPanel) {
     background-color: #f1f1f1;
     padding: 0%;
