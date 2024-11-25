@@ -37,12 +37,23 @@ WhereHaveIBeen is a web app to display your OwnTracks location history while doi
 ![Filters](screenshots/Filters.png)
 ### Choose what data to show! WhereHaveIBeen supports multiple OwnTracks users and devices, as well as filtering down by time frame.
 
+<br>
+<br>
+
+![Settings](screenshots/Settings.png)
+### Adjust how the map is drawn and change the routing URL if you host your own OSRM server.
+
 ---
 ## What's on the way?
+More settings! 
 
-Next up will be a better user settings system. Currently, settings are wiped on page refresh! It's important to fix this as I intend to add advanced settings to use your own OSRM router to draw the route on the map. 
+Hopefully a Google Maps Timeline import feature, as Timeline is changing to be local device only and will no longer be accessible online.
 
-Currently I host an OSRM server with the data from Washington, Oregon, and California, but if you live elsewhere that won't be helpful.
+---
+## Recently added!
+A better user settings system. Settings are no longer wiped on page refresh! You can change map buffer settings and the OSRM routing URL and WhereHaveIBeen will remmeber.
+
+Currently I host an OSRM server with the data from Washington, Oregon, and California, but if you live elsewhere you can use your own. If you are unable to/unwilling to host your own, you can use the url for the public OSRM demo server.
 
 ---
 ## Want to learn more?
