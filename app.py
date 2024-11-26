@@ -26,7 +26,7 @@ app = Flask(__name__)
 app.secret_key = os.getenv("WHIB_FLASK_SECRET_KEY")
 app.permanent_session_lifetime = timedelta(days=30)
 
-macDebugMode = False
+DEFAULT_OSRM_URL = os.getenv("WHIB_DEFAULT_OSRM_URL")
 
 
 @app.route("/")
@@ -198,7 +198,7 @@ def proxy_route():
         target_url = f"{osrm_url}/route/v1/{coords}"
         print("using custom osrm url")
     else:
-        target_url = f"http://mini.romangarms.com:5001/route/v1/{coords}"
+        target_url = f"{DEFAULT_OSRM_URL}/route/v1/{coords}"
         print("using default osrm url")
 
     if target_url.endswith("?overview=false"):
@@ -218,6 +218,8 @@ def proxy_route():
 
 
 if __name__ == "__main__":
+    if os.getenv("WHIB_DEFAULT_OSRM_URL") == None:
+        sys.exit("Missing Environment Variable: WHIB_DEFAULT_OSRM_URL")
     if os.getenv("WHIB_FLASK_SECRET_KEY") == None:
         sys.exit("Missing Environment Variable: WHIB_FLASK_SECRET_KEY")
 
