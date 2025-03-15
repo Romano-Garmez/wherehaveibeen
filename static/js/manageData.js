@@ -51,8 +51,8 @@ async function fetchLocations() {
         document.getElementById('startBox').value = data.features[0].properties.isotst.substring(0, 10);
 
         if (firstLoad) {
-        document.getElementById('endBox').value = new Date().toLocaleDateString('en-CA');
-        firstLoad = false;
+            document.getElementById('endBox').value = new Date().toLocaleDateString('en-CA');
+            firstLoad = false;
         }
 
         //total gps points
@@ -127,9 +127,9 @@ async function filterData(data) {
 
                     // Only add the point if it's farther than the minimum distance
                     if (dist > minDistanceFilter) {
+                        //TODO: filter points by speed, if high speed split into second latlngs array for plane travel
                         latlngs.push([lat, lng]);
                         //addPopup(lat, lng, feature);
-
                     }
 
                 } else {
@@ -187,6 +187,7 @@ function getHighestVelocity() {
  * @returns
  */
 function getCoverageStats(buffered, lineString) {
+    //TODO: fix this to handle multiple linestrings (add to vars rather than overwrite)
     let start = Date.now();
 
     // Convert distance to kilometers
