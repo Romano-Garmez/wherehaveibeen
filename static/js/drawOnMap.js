@@ -39,7 +39,7 @@ async function calculateNoRoute(latlngs, minDistBetweenPoints = 0.1) { //0.01 is
     let lineString = turf.lineString(processedLatlngs);
 
     let timeTaken = Date.now() - start;
-    completeTask("no route calculation", timeTaken);
+    //completeTask("no route calculation", timeTaken);
 
     return lineString;
 }
@@ -69,7 +69,7 @@ async function calculateSimpleRoute(latlngs) {
     let lineString = turf.lineString(processedLatlngs);
 
     let timeTaken = Date.now() - start;
-    completeTask("simple route calculation", timeTaken);
+    //completeTask("simple route calculation", timeTaken);
 
     return lineString;
 }

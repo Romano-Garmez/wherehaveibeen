@@ -83,6 +83,8 @@
                     } else {
                         linestring = await calculateNoRoute(latlngs, 0.1);
                     }
+                    //TODO: need to fix task system
+                    //completeTask("driving route calculation", -1);
                     updateProgressBar();
 
                     const buffered = await drawBuffer(linestring, 0.01, "blue");
@@ -114,6 +116,8 @@
                     } else {
                         linestring = await calculateNoRoute(latlngs, 0.1);
                     }
+                    //TODO: need to fix task system
+                    //completeTask("flying route calculation", -1);
                     updateProgressBar();
 
                     const buffered = await drawBuffer(linestring, 0.01, "red");
