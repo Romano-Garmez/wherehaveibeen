@@ -196,6 +196,7 @@ function resetMap() {
     try {
         resetProgressBar();
         eraseLayers();
+        resetCoverageStats()
     }
     catch (err) {
         console.log("No map data to erase, err: " + err);

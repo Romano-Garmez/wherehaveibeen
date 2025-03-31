@@ -6,6 +6,8 @@ const minDistanceFilter = .5; // Adjust the distance threshold in kilometers (10
 //stats
 let highestAltitude = 0;
 let highestVelocity = 0;
+let distanceKm = 0;
+let area = 0;
 
 let firstLoad = true;
 
@@ -191,12 +193,12 @@ function getCoverageStats(buffered, lineString) {
     let start = Date.now();
 
     // Convert distance to kilometers
-    let distanceKm = turf.length(lineString, { units: 'kilometers' }); // Total distance in kilometers
+    distanceKm += turf.length(lineString, { units: 'kilometers' }); // Total distance in kilometers
 
     document.getElementById('totalDist').innerHTML = "<p>" + Math.round(distanceKm * 100) / 100 + "km or " + Math.round((distanceKm / 1.609) * 100) / 100 + "mi</p>";
 
     // Calculate the total area of the route
-    let area = turf.area(buffered) / 1e6; // Convert m² to km²
+    area += turf.area(buffered) / 1e6; // Convert m² to km²
 
     document.getElementById('totalArea').innerHTML = "<p>" + Math.round(area * 100) / 100 + "km² or " + Math.round((area / 1.609) * 100) / 100 + "mi²</p>";
 
@@ -205,6 +207,15 @@ function getCoverageStats(buffered, lineString) {
     let timeTaken = Date.now() - start;
     completeTask("coverage stats", timeTaken);
 }
+
+function resetCoverageStats() {
+    distanceKm = 0;
+    area = 0;
+    document.getElementById('totalDist').innerHTML = "<p>0km or 0mi</p>";
+    document.getElementById('totalArea').innerHTML = "<p>0km² or 0mi²</p>";
+    document.getElementById('totalAreaPct').innerHTML = "<p>0%</p>";
+}
+
 
 function getOwntracksStats(data) {
     let start = Date.now();
