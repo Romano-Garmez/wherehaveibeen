@@ -2,6 +2,7 @@
 
 //skip points withing .5 km of the previous point
 const minDistanceFilter = .5; // Adjust the distance threshold in kilometers (10 meters for example)
+const drivingFlyingThresholdKMH = 200; // If above threshold, assume flying, else driving
 
 //stats
 let highestAltitude = 0;
@@ -110,7 +111,11 @@ function changeDateRange(timeframe) {
 async function filterData(data) {
     let start = Date.now();
 
-    let latlngs = [];
+    let drivingLatlngs = []; // Array to hold driving coordinates
+    let flyingLatlngs = []; // Array to hold flying coordinates
+
+    let currentMode = null; // Tracks the current mode: 'driving' or 'flying'
+    let currentSegment = []; // Holds the current segment of points
 
     console.log(data.features[0]);
 
@@ -123,29 +128,57 @@ async function filterData(data) {
             if (feature.properties.acc < 100) { //feature.properties.vel > 5 || feature.properties.vel == 0 && feature.properties.acc < 100
 
 
-                if (latlngs.length > 0) {
-                    const lastPoint = latlngs[latlngs.length - 1];
+                if (currentSegment.length > 0) {
+                    const lastPoint = currentSegment[currentSegment.length - 1];
                     const dist = getDistanceFromLatLonInKm(lastPoint[0], lastPoint[1], lat, lng);
 
                     // Only add the point if it's farther than the minimum distance
                     if (dist > minDistanceFilter) {
-                        //TODO: filter points by speed, if high speed split into second latlngs array for plane travel
-                        latlngs.push([lat, lng]);
-                        //addPopup(lat, lng, feature);
-                    }
+                        const isFlying = feature.properties.vel > drivingFlyingThresholdKMH;
 
+                        // Check if the mode has changed
+                        if (
+                            (isFlying && currentMode !== 'flying') ||
+                            (!isFlying && currentMode !== 'driving')
+                        ) {
+                            // Save the current segment to the appropriate array
+                            if (currentMode === 'flying') {
+                                flyingLatlngs.push(currentSegment);
+                            } else if (currentMode === 'driving') {
+                                console.log("Driving segment: " + currentSegment);
+                                drivingLatlngs.push(currentSegment);
+                            }
+
+                            // Start a new segment
+                            currentSegment = [];
+                            currentMode = isFlying ? 'flying' : 'driving';
+                        }
+
+                        // Add the point to the current segment
+                        currentSegment.push([lat, lng]);
+                    }
                 } else {
                     // Always add the first point
-                    latlngs.push([lat, lng]);
+                    currentSegment.push([lat, lng]);
+                    currentMode = feature.properties.vel > drivingFlyingThresholdKMH ? 'flying' : 'driving';
                 }
             }
         }
     });
 
+    // Save the last segment to the appropriate array
+    if (currentSegment.length > 0) {
+        if (currentMode === 'flying') {
+            flyingLatlngs.push(currentSegment);
+        } else if (currentMode === 'driving') {
+            drivingLatlngs.push(currentSegment);
+        }
+    }
+
     let timeTaken = Date.now() - start;
     completeTask("filtering data", timeTaken);
 
-    return latlngs;
+    return { drivingLatlngs, flyingLatlngs };
 }
 
 

@@ -3,7 +3,7 @@
      * @param {Object} data - The data to filter
      * @returns {Array} - The filtered data
      */
-async function calculateNoRoute(latlngs, minDistBetweenPoints=0.1) { //0.01 is 10m
+async function calculateNoRoute(latlngs, minDistBetweenPoints = 0.1) { //0.01 is 10m
     let start = Date.now();
 
     await new Promise(resolve => setTimeout(resolve, 0)); // Allow UI to update
@@ -84,7 +84,7 @@ async function calculateComplexRoute(latlngs) {
 
     if (osrmRouter != "") {
         console.log("Using custom OSRM router: " + osrmRouter);
-    }else{
+    } else {
         console.log("Using default OSRM router");
     }
 
@@ -135,7 +135,7 @@ async function calculateComplexRoute(latlngs) {
  * @param {Object} lineString - The lineString to buffer
  * @returns {Object} - The buffer layer
  */
-async function drawBuffer(lineString, tolerance) {
+async function drawBuffer(lineString, tolerance, color) {
     let start = Date.now();
 
     // Get the circle size from the UI
@@ -155,10 +155,20 @@ async function drawBuffer(lineString, tolerance) {
         resolve();
     }, 0));
 
+    if (color == "blue") {
+        bufferColor = "rgba(0, 0, 255, 0.4)";
+    } else if (color == "green") {
+        bufferColor = "rgba(0, 255, 0, 0.4)";
+    }
+    else if (color == "red") {
+        bufferColor = "rgba(255, 0, 0, 0.4)";
+    }
+
+
     // Convert the buffer to GeoJSON and add it to the map
     let bufferLayer = L.geoJSON(buffered, {
         style: function () {
-            return { color: 'rgba(0, 0, 255, 0.4)', weight: 2 };
+            return { color: bufferColor, weight: 2 };
         }
     }).addTo(map);
 

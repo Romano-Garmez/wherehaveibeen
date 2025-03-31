@@ -55,37 +55,74 @@
             updateProgressBar();
 
             //filter data
-            const latlngs = await filterData(data)
+            const { drivingLatlngs, flyingLatlngs } = await filterData(data)
             updateProgressBar();
 
             //get owntracks stats
             getOwntracksStats(data);
 
-            //drawing buffer
-            if (latlngs.length > 1) {
-                let linestring;
+            for (const latlngs of drivingLatlngs) {
+                console.log("driving latlngs", latlngs);
 
-                //complex route buffer can only handle 500 points or less
-                //simple route buffer can handle any number, but gets pretty slow north of 3000
-                //no route is much quicker, but less accurate. Use the minDistance value to adjust accuracy. 
-                //Points between .01km of each other will be skipped if you pass in .01km
-                if (data.features.length < 500) {
-                    linestring = await calculateComplexRoute(latlngs);
-                } else if (data.features.length < 3000) {
-                    linestring = await calculateSimpleRoute(latlngs);
-                } else if (data.features.length < 5000) {
-                    linestring = await calculateNoRoute(latlngs, 0.01);
-                } else {
-                    linestring = await calculateNoRoute(latlngs, 0.1);
+                //console.log("driving latlngs", latlngs);
+
+                //drawing buffer
+                if (latlngs.length > 1) {
+                    let linestring;
+
+                    //complex route buffer can only handle 500 points or less
+                    //simple route buffer can handle any number, but gets pretty slow north of 3000
+                    //no route is much quicker, but less accurate. Use the minDistance value to adjust accuracy. 
+                    //Points between .01km of each other will be skipped if you pass in .01km
+                    if (data.features.length < 500) {
+                        linestring = await calculateComplexRoute(latlngs);
+                    } else if (data.features.length < 3000) {
+                        linestring = await calculateSimpleRoute(latlngs);
+                    } else if (data.features.length < 5000) {
+                        linestring = await calculateNoRoute(latlngs, 0.01);
+                    } else {
+                        linestring = await calculateNoRoute(latlngs, 0.1);
+                    }
+                    updateProgressBar();
+
+                    const buffered = await drawBuffer(linestring, 0.01, "blue");
+                    updateProgressBar();
+
+                    //get stats
+                    getCoverageStats(buffered, linestring);
+                    updateProgressBar();
                 }
-                updateProgressBar();
 
-                const buffered = await drawBuffer(linestring, 0.01);
-                updateProgressBar();
+            }
 
-                //get stats
-                getCoverageStats(buffered, linestring);
-                updateProgressBar();
+            for (const latlngs of flyingLatlngs) {
+
+                //drawing buffer
+                if (latlngs.length > 1) {
+                    let linestring;
+
+                    //complex route buffer can only handle 500 points or less
+                    //simple route buffer can handle any number, but gets pretty slow north of 3000
+                    //no route is much quicker, but less accurate. Use the minDistance value to adjust accuracy. 
+                    //Points between .01km of each other will be skipped if you pass in .01km
+                    if (data.features.length < 500) {
+                        linestring = await calculateComplexRoute(latlngs);
+                    } else if (data.features.length < 3000) {
+                        linestring = await calculateSimpleRoute(latlngs);
+                    } else if (data.features.length < 5000) {
+                        linestring = await calculateNoRoute(latlngs, 0.01);
+                    } else {
+                        linestring = await calculateNoRoute(latlngs, 0.1);
+                    }
+                    updateProgressBar();
+
+                    const buffered = await drawBuffer(linestring, 0.01, "red");
+                    updateProgressBar();
+
+                    //get stats
+                    getCoverageStats(buffered, linestring);
+                    updateProgressBar();
+                }
 
             }
         } else {
