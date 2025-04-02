@@ -196,21 +196,21 @@ def proxy_route():
     # Construct the URL you want to forward the request to
     if osrm_url:
         target_url = f"{osrm_url}/route/v1/{coords}"
-        print("using custom osrm url")
+        #print("using custom osrm url")
     else:
         target_url = f"{DEFAULT_OSRM_URL}/route/v1/{coords}"
-        print("using default osrm url")
+        #print("using default osrm url")
 
     if target_url.endswith("?overview=false"):
         target_url = target_url.replace("?overview=false", "")
     
     
-    print("target_url is ", target_url)
+    #print("target_url is ", target_url)
 
     # Forward the request to the insecure server
     response = requests.get(target_url)
 
-    print("response status code: ", response.status_code)
+    #print("response status code: ", response.status_code)
     #print("response content: ", response.content)
 
     # Return the response back to the client

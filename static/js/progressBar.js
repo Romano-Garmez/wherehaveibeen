@@ -10,9 +10,7 @@ let progressBarCurrentStep = 0;
  */
 function completeTask(task, timeTaken) {
     tasksDone.push(task);
-    console.log("Task " + task + " completed in " + timeTaken + " milliseconds");
-    progressBarCurrentStep = tasksDone.length;
-    console.log("current step: " + progressBarCurrentStep);
+    //console.log("Task " + task + " completed in " + timeTaken + " milliseconds");
 
     // Allow the browser to repaint after the task completes
     setTimeout(updateProgressBar, 0);
