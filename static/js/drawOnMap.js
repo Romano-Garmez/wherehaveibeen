@@ -27,7 +27,7 @@ async function calculateNoRoute(latlngs, minDistBetweenPoints = 0.1) { //0.01 is
         // Add the current point if it's far enough from all previous points
         if (isFarEnough) {
             processedLatlngs.push(currentPoint);
-    
+
         }
 
         // Every 100 iterations, yield control back to the browser to allow the UI to update
@@ -132,11 +132,59 @@ async function calculateComplexRoute(latlngs) {
 }
 
 /**
+ * Add all lineStrings to a single buffer rather than separate buffers, prevents overlap on map
+ * @param {*} lineStrings array of linestrings to buffer
+ * @param {*} tolerance turf.simplify tolerance
+ * @param {*} color color for buffer on map
+ */
+async function createUnifiedBuffer(lineStrings, tolerance, color) {
+    let unifiedBuffer = null;
+
+    for (const lineString of lineStrings) {
+        // Buffer each lineString and merge them into a single buffer
+        const buffer = await drawBuffer(lineString, tolerance);
+        if (unifiedBuffer) {
+            unifiedBuffer = turf.union(unifiedBuffer, buffer);
+        } else {
+            unifiedBuffer = buffer;
+        }
+
+        getLinestringStats(lineString);
+        updateProgressBar();
+    }
+
+    let bufferColor = "rgba(0, 0, 255, 0.4)"; // Default color is blue
+    // Set the buffer color based on the selected color
+    if (color == "blue") {
+        bufferColor = "rgba(0, 0, 255, 0.4)";
+    } else if (color == "green") {
+        bufferColor = "rgba(0, 255, 0, 0.4)";
+    }
+    else if (color == "red") {
+        bufferColor = "rgba(255, 0, 0, 0.4)";
+    }
+
+    // Convert the buffer to GeoJSON and add it to the map
+    let bufferLayer = L.geoJSON(unifiedBuffer, {
+        style: function () {
+            return { color: bufferColor, weight: 2 };
+        }
+    }).addTo(map);
+
+    // Adjust the map to fit the new buffer bounds
+    const bounds = bufferLayer.getBounds();
+    map.fitBounds(bounds);
+
+    getBufferStats(unifiedBuffer);
+    updateProgressBar();
+}
+
+/**
  * Draw a buffer around the route using Turf.js.
  * @param {Object} lineString - The lineString to buffer
  * @returns {Object} - The buffer layer
  */
-async function drawBuffer(lineString, tolerance, color) {
+async function drawBuffer(lineString, tolerance) {
     let start = Date.now();
 
     // Get the circle size from the UI
@@ -156,31 +204,8 @@ async function drawBuffer(lineString, tolerance, color) {
         resolve();
     }, 0));
 
-    let bufferColor = "rgba(0, 0, 255, 0.4)"; // Default color is blue
-    // Set the buffer color based on the selected color
-    if (color == "blue") {
-        bufferColor = "rgba(0, 0, 255, 0.4)";
-    } else if (color == "green") {
-        bufferColor = "rgba(0, 255, 0, 0.4)";
-    }
-    else if (color == "red") {
-        bufferColor = "rgba(255, 0, 0, 0.4)";
-    }
-
-
-    // Convert the buffer to GeoJSON and add it to the map
-    let bufferLayer = L.geoJSON(buffered, {
-        style: function () {
-            return { color: bufferColor, weight: 2 };
-        }
-    }).addTo(map);
-
     let timeTaken = Date.now() - start;
     completeTask("buffer drawing", timeTaken);
-
-    // Adjust the map to fit the new buffer bounds
-    const bounds = bufferLayer.getBounds();
-    map.fitBounds(bounds);
 
     return buffered;
 }

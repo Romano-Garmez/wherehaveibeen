@@ -10,7 +10,7 @@ let progressBarCurrentStep = 0;
  */
 function completeTask(task, timeTaken) {
     tasksDone.push(task);
-    //console.log("Task " + task + " completed in " + timeTaken + " milliseconds");
+    console.log("Task " + task + " completed in " + timeTaken + " milliseconds");
 
     // Allow the browser to repaint after the task completes
     setTimeout(updateProgressBar, 0);
@@ -39,8 +39,10 @@ async function updateProgressBar() {
     if (progressBarError) {
         document.getElementById("progressBarInner").style.backgroundColor = "#FF0000";
     }
-    else if (progress == 100) {
+    else if (progress >= 100) {
         document.getElementById("progressBarInner").style.backgroundColor = "#04AA6D";
+        console.log("All tasks completed, task number was " + getNumTasksDone());
+        console.log("Progress bar length was set to " + progressBarNumSteps);
     }
     else {
         document.getElementById("progressBarInner").style.backgroundColor = "#4870AF";

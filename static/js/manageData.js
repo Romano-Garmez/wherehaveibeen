@@ -229,7 +229,7 @@ function getHighestVelocity() {
  * @param {*} device
  * @returns
  */
-function getCoverageStats(buffered, lineString) {
+function getLinestringStats(lineString) {
     let start = Date.now();
 
     // Convert distance to kilometers
@@ -237,15 +237,22 @@ function getCoverageStats(buffered, lineString) {
 
     document.getElementById('totalDist').innerHTML = "<p>" + Math.round(distanceKm * 100) / 100 + "km or " + Math.round((distanceKm / 1.609) * 100) / 100 + "mi</p>";
 
+    let timeTaken = Date.now() - start;
+    completeTask("linestring stats", timeTaken);
+}
+
+function getBufferStats(buffer) {
+    let start = Date.now();
+
     // Calculate the total area of the route
-    area += turf.area(buffered) / 1e6; // Convert m² to km²
+    area += turf.area(buffer) / 1e6; // Convert m² to km²
 
     document.getElementById('totalArea').innerHTML = "<p>" + Math.round(area * 100) / 100 + "km² or " + Math.round((area / 1.609) * 100) / 100 + "mi²</p>";
 
     document.getElementById('totalAreaPct').innerHTML = "<p>" + area / 863428 + "%" + "</p>";
 
     let timeTaken = Date.now() - start;
-    completeTask("coverage stats", timeTaken);
+    completeTask("buffer stats", timeTaken);
 }
 
 function resetCoverageStats() {

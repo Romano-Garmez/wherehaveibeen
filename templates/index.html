@@ -61,9 +61,12 @@
             //get owntracks stats
             getOwntracksStats(data);
 
+            //extra buffer stats for each type of data, driving/flying
+            let extraTasks = 2;
             let totalNumSegments = drivingLatlngs.length * 3 + flyingLatlngs.length * 3;
-            setProgressBarNumSteps(totalNumSegments + getNumTasksDone());
+            setProgressBarNumSteps(totalNumSegments + getNumTasksDone() + extraTasks);
 
+            let drivingLineStrings = [];
             for (const latlngs of drivingLatlngs) {
                 //drawing buffer
                 if (latlngs.length > 1) {
@@ -84,16 +87,15 @@
                     }
                     updateProgressBar();
 
-                    const buffered = await drawBuffer(linestring, 0.01, "blue");
-                    updateProgressBar();
-
-                    //get stats
-                    getCoverageStats(buffered, linestring);
-                    updateProgressBar();
+                    drivingLineStrings.push(linestring);
                 }
 
             }
 
+            createUnifiedBuffer(drivingLineStrings, 0.01, "blue");
+
+
+            let flyingLineStrings = [];
             for (const latlngs of flyingLatlngs) {
 
                 //drawing buffer
@@ -115,15 +117,12 @@
                     }
                     updateProgressBar();
 
-                    const buffered = await drawBuffer(linestring, 0.01, "red");
-                    updateProgressBar();
-
-                    //get stats
-                    getCoverageStats(buffered, linestring);
-                    updateProgressBar();
+                    flyingLineStrings.push(linestring);
                 }
 
             }
+
+            createUnifiedBuffer(flyingLineStrings, 0.01, "red");
         } else {
             openForm();
         }
