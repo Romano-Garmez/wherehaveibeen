@@ -2,10 +2,14 @@
 
 //skip points withing .5 km of the previous point
 const minDistanceFilter = .5; // Adjust the distance threshold in kilometers (10 meters for example)
+const drivingFlyingThresholdKMH = 200; // If above threshold, assume flying, else driving
+const distanceBetweenPointsFlyingThreshold = 100; // If distance is greater than this, assume flying
 
 //stats
 let highestAltitude = 0;
 let highestVelocity = 0;
+let distanceKm = 0;
+let area = 0;
 
 let firstLoad = true;
 
@@ -108,7 +112,11 @@ function changeDateRange(timeframe) {
 async function filterData(data) {
     let start = Date.now();
 
-    let latlngs = [];
+    let drivingLatlngs = []; // Array to hold driving coordinates
+    let flyingLatlngs = []; // Array to hold flying coordinates
+
+    let currentMode = null; // Tracks the current mode: 'driving' or 'flying'
+    let currentSegment = []; // Holds the current segment of points
 
     console.log(data.features[0]);
 
@@ -121,29 +129,64 @@ async function filterData(data) {
             if (feature.properties.acc < 100) { //feature.properties.vel > 5 || feature.properties.vel == 0 && feature.properties.acc < 100
 
 
-                if (latlngs.length > 0) {
-                    const lastPoint = latlngs[latlngs.length - 1];
+                if (currentSegment.length > 0) {
+                    const lastPoint = currentSegment[currentSegment.length - 1];
                     const dist = getDistanceFromLatLonInKm(lastPoint[0], lastPoint[1], lat, lng);
 
                     // Only add the point if it's farther than the minimum distance
                     if (dist > minDistanceFilter) {
-                        //TODO: filter points by speed, if high speed split into second latlngs array for plane travel
-                        latlngs.push([lat, lng]);
-                        //addPopup(lat, lng, feature);
-                    }
+                        let isFlying = feature.properties.vel > drivingFlyingThresholdKMH;
 
+                        if (dist > distanceBetweenPointsFlyingThreshold) {
+                            isFlying = true; // Force flying mode if distance is greater than 100 km
+                        }
+
+                        // Check if the mode has changed
+                        if (
+                            (isFlying && currentMode !== 'flying') ||
+                            (!isFlying && currentMode !== 'driving')
+                        ) {
+                            // Save the current segment to the appropriate array
+
+                            //skip segments with only one point
+                            if (currentSegment.length > 1) {
+                                if (currentMode === 'flying') {
+                                    flyingLatlngs.push(currentSegment);
+                                } else if (currentMode === 'driving') {
+                                    drivingLatlngs.push(currentSegment);
+                                }
+
+                                // Start a new segment
+                                currentSegment = [];
+                                currentMode = isFlying ? 'flying' : 'driving';
+                            }
+                        }
+
+                        // Add the point to the current segment
+                        currentSegment.push([lat, lng]);
+                    }
                 } else {
                     // Always add the first point
-                    latlngs.push([lat, lng]);
+                    currentSegment.push([lat, lng]);
+                    currentMode = feature.properties.vel > drivingFlyingThresholdKMH ? 'flying' : 'driving';
                 }
             }
         }
     });
 
+    // Save the last segment to the appropriate array
+    if (currentSegment.length > 0) {
+        if (currentMode === 'flying') {
+            flyingLatlngs.push(currentSegment);
+        } else if (currentMode === 'driving') {
+            drivingLatlngs.push(currentSegment);
+        }
+    }
+
     let timeTaken = Date.now() - start;
     completeTask("filtering data", timeTaken);
 
-    return latlngs;
+    return { drivingLatlngs, flyingLatlngs };
 }
 
 
@@ -186,25 +229,40 @@ function getHighestVelocity() {
  * @param {*} device
  * @returns
  */
-function getCoverageStats(buffered, lineString) {
-    //TODO: fix this to handle multiple linestrings (add to vars rather than overwrite)
+function getLinestringStats(lineString) {
     let start = Date.now();
 
     // Convert distance to kilometers
-    let distanceKm = turf.length(lineString, { units: 'kilometers' }); // Total distance in kilometers
+    distanceKm += turf.length(lineString, { units: 'kilometers' }); // Total distance in kilometers
 
     document.getElementById('totalDist').innerHTML = "<p>" + Math.round(distanceKm * 100) / 100 + "km or " + Math.round((distanceKm / 1.609) * 100) / 100 + "mi</p>";
 
+    let timeTaken = Date.now() - start;
+    completeTask("linestring stats", timeTaken);
+}
+
+function getBufferStats(buffer) {
+    let start = Date.now();
+
     // Calculate the total area of the route
-    let area = turf.area(buffered) / 1e6; // Convert m² to km²
+    area += turf.area(buffer) / 1e6; // Convert m² to km²
 
     document.getElementById('totalArea').innerHTML = "<p>" + Math.round(area * 100) / 100 + "km² or " + Math.round((area / 1.609) * 100) / 100 + "mi²</p>";
 
     document.getElementById('totalAreaPct').innerHTML = "<p>" + area / 863428 + "%" + "</p>";
 
     let timeTaken = Date.now() - start;
-    completeTask("coverage stats", timeTaken);
+    completeTask("buffer stats", timeTaken);
 }
+
+function resetCoverageStats() {
+    distanceKm = 0;
+    area = 0;
+    document.getElementById('totalDist').innerHTML = "<p>0km or 0mi</p>";
+    document.getElementById('totalArea').innerHTML = "<p>0km² or 0mi²</p>";
+    document.getElementById('totalAreaPct').innerHTML = "<p>0%</p>";
+}
+
 
 function getOwntracksStats(data) {
     let start = Date.now();

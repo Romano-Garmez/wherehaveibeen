@@ -55,39 +55,20 @@
             updateProgressBar();
 
             //filter data
-            const latlngs = await filterData(data)
+            const { drivingLatlngs, flyingLatlngs } = await filterData(data)
             updateProgressBar();
 
             //get owntracks stats
             getOwntracksStats(data);
 
-            //drawing buffer
-            if (latlngs.length > 1) {
-                let linestring;
+            //extra buffer stats for each type of data, driving/flying
+            let extraTasks = 2;
+            let totalNumSegments = drivingLatlngs.length * 3 + flyingLatlngs.length * 3;
+            setProgressBarNumSteps(totalNumSegments + getNumTasksDone() + extraTasks);
 
-                //complex route buffer can only handle 500 points or less
-                //simple route buffer can handle any number, but gets pretty slow north of 3000
-                //no route is much quicker, but less accurate. Use the minDistance value to adjust accuracy. 
-                //Points between .01km of each other will be skipped if you pass in .01km
-                if (data.features.length < 500) {
-                    linestring = await calculateComplexRoute(latlngs);
-                } else if (data.features.length < 3000) {
-                    linestring = await calculateSimpleRoute(latlngs);
-                } else if (data.features.length < 5000) {
-                    linestring = await calculateNoRoute(latlngs, 0.01);
-                } else {
-                    linestring = await calculateNoRoute(latlngs, 0.1);
-                }
-                updateProgressBar();
+            calculateAndDrawRoute(data, drivingLatlngs, "blue")
 
-                const buffered = await drawBuffer(linestring, 0.01);
-                updateProgressBar();
-
-                //get stats
-                getCoverageStats(buffered, linestring);
-                updateProgressBar();
-
-            }
+            calculateAndDrawRoute(data, flyingLatlngs, "red")
         } else {
             openForm();
         }

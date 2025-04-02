@@ -1,9 +1,46 @@
 /**
+ * Given the location data, list of latlngs, and color, this function calculates the routes for all given latlngs and draws it on the map as a single object.
+ * @param {*} data retrieved from fetchLocations();
+ * @param {*} latlngsList list of drivingLatlngs or flyingLatlngs
+ * @param {*} color "blue" or "green" or "red"
+ */
+async function calculateAndDrawRoute(data, latlngsList, color) {
+    let lineStrings = [];
+    for (const latlngs of latlngsList) {
+        //drawing buffer
+        if (latlngs.length > 1) {
+            let linestring;
+
+            //complex route buffer can only handle 500 points or less
+            //simple route buffer can handle any number, but gets pretty slow north of 3000
+            //no route is much quicker, but less accurate. Use the minDistance value to adjust accuracy. 
+            //Points between .01km of each other will be skipped if you pass in .01km
+            if (data.features.length < 500) {
+                linestring = await calculateComplexRoute(latlngs);
+            } else if (data.features.length < 3000) {
+                linestring = await calculateSimpleRoute(latlngs);
+            } else if (data.features.length < 5000) {
+                linestring = await calculateNoRoute(latlngs, 0.01);
+            } else {
+                linestring = await calculateNoRoute(latlngs, 0.1);
+            }
+            updateProgressBar();
+
+            lineStrings.push(linestring);
+        }
+
+    }
+
+    createUnifiedBuffer(lineStrings, 0.01, color);
+}
+
+
+/**
      * Draw the route on the map and buffer it using the simple route method. The simple route method uses Turf.js to buffer the route without calculating the route.
      * @param {Object} data - The data to filter
      * @returns {Array} - The filtered data
      */
-async function calculateNoRoute(latlngs, minDistBetweenPoints=0.1) { //0.01 is 10m
+async function calculateNoRoute(latlngs, minDistBetweenPoints = 0.1) { //0.01 is 10m
     let start = Date.now();
 
     await new Promise(resolve => setTimeout(resolve, 0)); // Allow UI to update
@@ -27,6 +64,7 @@ async function calculateNoRoute(latlngs, minDistBetweenPoints=0.1) { //0.01 is 1
         // Add the current point if it's far enough from all previous points
         if (isFarEnough) {
             processedLatlngs.push(currentPoint);
+
         }
 
         // Every 100 iterations, yield control back to the browser to allow the UI to update
@@ -84,7 +122,7 @@ async function calculateComplexRoute(latlngs) {
 
     if (osrmRouter != "") {
         console.log("Using custom OSRM router: " + osrmRouter);
-    }else{
+    } else {
         console.log("Using default OSRM router");
     }
 
@@ -131,6 +169,54 @@ async function calculateComplexRoute(latlngs) {
 }
 
 /**
+ * Add all lineStrings to a single buffer rather than separate buffers, prevents overlap on map
+ * @param {*} lineStrings array of linestrings to buffer
+ * @param {*} tolerance turf.simplify tolerance
+ * @param {*} color color for buffer on map
+ */
+async function createUnifiedBuffer(lineStrings, tolerance, color) {
+    let unifiedBuffer = null;
+
+    for (const lineString of lineStrings) {
+        // Buffer each lineString and merge them into a single buffer
+        const buffer = await drawBuffer(lineString, tolerance);
+        if (unifiedBuffer) {
+            unifiedBuffer = turf.union(unifiedBuffer, buffer);
+        } else {
+            unifiedBuffer = buffer;
+        }
+
+        getLinestringStats(lineString);
+        updateProgressBar();
+    }
+
+    let bufferColor = "rgba(0, 0, 255, 0.4)"; // Default color is blue
+    // Set the buffer color based on the selected color
+    if (color == "blue") {
+        bufferColor = "rgba(0, 0, 255, 0.4)";
+    } else if (color == "green") {
+        bufferColor = "rgba(0, 255, 0, 0.4)";
+    }
+    else if (color == "red") {
+        bufferColor = "rgba(255, 0, 0, 0.4)";
+    }
+
+    // Convert the buffer to GeoJSON and add it to the map
+    let bufferLayer = L.geoJSON(unifiedBuffer, {
+        style: function () {
+            return { color: bufferColor, weight: 2 };
+        }
+    }).addTo(map);
+
+    // Adjust the map to fit the new buffer bounds
+    const bounds = bufferLayer.getBounds();
+    map.fitBounds(bounds);
+
+    getBufferStats(unifiedBuffer);
+    updateProgressBar();
+}
+
+/**
  * Draw a buffer around the route using Turf.js.
  * @param {Object} lineString - The lineString to buffer
  * @returns {Object} - The buffer layer
@@ -155,19 +241,8 @@ async function drawBuffer(lineString, tolerance) {
         resolve();
     }, 0));
 
-    // Convert the buffer to GeoJSON and add it to the map
-    let bufferLayer = L.geoJSON(buffered, {
-        style: function () {
-            return { color: 'rgba(0, 0, 255, 0.4)', weight: 2 };
-        }
-    }).addTo(map);
-
     let timeTaken = Date.now() - start;
     completeTask("buffer drawing", timeTaken);
-
-    // Adjust the map to fit the new buffer bounds
-    const bounds = bufferLayer.getBounds();
-    map.fitBounds(bounds);
 
     return buffered;
 }
@@ -196,6 +271,7 @@ function resetMap() {
     try {
         resetProgressBar();
         eraseLayers();
+        resetCoverageStats()
     }
     catch (err) {
         console.log("No map data to erase, err: " + err);

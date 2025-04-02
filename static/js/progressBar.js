@@ -1,6 +1,7 @@
 let tasksDone = [];
 let progressBarNumSteps = 5;
 let progressBarError = false;
+let progressBarCurrentStep = 0;
 
 /**
  * Mark a task complete and update the progress bar. Prints to console with what task finished and how long it took to complete.
@@ -28,7 +29,6 @@ function getNumTasksDone() {
  * Changes color based on status
  */
 async function updateProgressBar() {
-    //console.log("Updating progress bar with value " + getNumTasksDone());
 
     let totalTasks = progressBarNumSteps;
 
@@ -39,8 +39,10 @@ async function updateProgressBar() {
     if (progressBarError) {
         document.getElementById("progressBarInner").style.backgroundColor = "#FF0000";
     }
-    else if (progress == 100) {
+    else if (progress >= 100) {
         document.getElementById("progressBarInner").style.backgroundColor = "#04AA6D";
+        console.log("All tasks completed, task number was " + getNumTasksDone());
+        console.log("Progress bar length was set to " + progressBarNumSteps);
     }
     else {
         document.getElementById("progressBarInner").style.backgroundColor = "#4870AF";
