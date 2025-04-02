@@ -66,63 +66,9 @@
             let totalNumSegments = drivingLatlngs.length * 3 + flyingLatlngs.length * 3;
             setProgressBarNumSteps(totalNumSegments + getNumTasksDone() + extraTasks);
 
-            let drivingLineStrings = [];
-            for (const latlngs of drivingLatlngs) {
-                //drawing buffer
-                if (latlngs.length > 1) {
-                    let linestring;
+            calculateAndDrawRoute(data, drivingLatlngs, "blue")
 
-                    //complex route buffer can only handle 500 points or less
-                    //simple route buffer can handle any number, but gets pretty slow north of 3000
-                    //no route is much quicker, but less accurate. Use the minDistance value to adjust accuracy. 
-                    //Points between .01km of each other will be skipped if you pass in .01km
-                    if (data.features.length < 500) {
-                        linestring = await calculateComplexRoute(latlngs);
-                    } else if (data.features.length < 3000) {
-                        linestring = await calculateSimpleRoute(latlngs);
-                    } else if (data.features.length < 5000) {
-                        linestring = await calculateNoRoute(latlngs, 0.01);
-                    } else {
-                        linestring = await calculateNoRoute(latlngs, 0.1);
-                    }
-                    updateProgressBar();
-
-                    drivingLineStrings.push(linestring);
-                }
-
-            }
-
-            createUnifiedBuffer(drivingLineStrings, 0.01, "blue");
-
-
-            let flyingLineStrings = [];
-            for (const latlngs of flyingLatlngs) {
-
-                //drawing buffer
-                if (latlngs.length > 1) {
-                    let linestring;
-
-                    //complex route buffer can only handle 500 points or less
-                    //simple route buffer can handle any number, but gets pretty slow north of 3000
-                    //no route is much quicker, but less accurate. Use the minDistance value to adjust accuracy. 
-                    //Points between .01km of each other will be skipped if you pass in .01km
-                    if (data.features.length < 500) {
-                        linestring = await calculateComplexRoute(latlngs);
-                    } else if (data.features.length < 3000) {
-                        linestring = await calculateSimpleRoute(latlngs);
-                    } else if (data.features.length < 5000) {
-                        linestring = await calculateNoRoute(latlngs, 0.01);
-                    } else {
-                        linestring = await calculateNoRoute(latlngs, 0.1);
-                    }
-                    updateProgressBar();
-
-                    flyingLineStrings.push(linestring);
-                }
-
-            }
-
-            createUnifiedBuffer(flyingLineStrings, 0.01, "red");
+            calculateAndDrawRoute(data, flyingLatlngs, "red")
         } else {
             openForm();
         }

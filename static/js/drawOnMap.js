@@ -1,4 +1,41 @@
 /**
+ * Given the location data, list of latlngs, and color, this function calculates the routes for all given latlngs and draws it on the map as a single object.
+ * @param {*} data retrieved from fetchLocations();
+ * @param {*} latlngsList list of drivingLatlngs or flyingLatlngs
+ * @param {*} color "blue" or "green" or "red"
+ */
+async function calculateAndDrawRoute(data, latlngsList, color) {
+    let lineStrings = [];
+    for (const latlngs of latlngsList) {
+        //drawing buffer
+        if (latlngs.length > 1) {
+            let linestring;
+
+            //complex route buffer can only handle 500 points or less
+            //simple route buffer can handle any number, but gets pretty slow north of 3000
+            //no route is much quicker, but less accurate. Use the minDistance value to adjust accuracy. 
+            //Points between .01km of each other will be skipped if you pass in .01km
+            if (data.features.length < 500) {
+                linestring = await calculateComplexRoute(latlngs);
+            } else if (data.features.length < 3000) {
+                linestring = await calculateSimpleRoute(latlngs);
+            } else if (data.features.length < 5000) {
+                linestring = await calculateNoRoute(latlngs, 0.01);
+            } else {
+                linestring = await calculateNoRoute(latlngs, 0.1);
+            }
+            updateProgressBar();
+
+            lineStrings.push(linestring);
+        }
+
+    }
+
+    createUnifiedBuffer(lineStrings, 0.01, color);
+}
+
+
+/**
      * Draw the route on the map and buffer it using the simple route method. The simple route method uses Turf.js to buffer the route without calculating the route.
      * @param {Object} data - The data to filter
      * @returns {Array} - The filtered data
