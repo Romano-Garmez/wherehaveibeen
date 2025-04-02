@@ -134,7 +134,12 @@ async function filterData(data) {
 
                     // Only add the point if it's farther than the minimum distance
                     if (dist > minDistanceFilter) {
-                        const isFlying = feature.properties.vel > drivingFlyingThresholdKMH;
+                        let isFlying = feature.properties.vel > drivingFlyingThresholdKMH;
+
+                        if (dist > 100) {
+                            //console.log("Distance between points: " + dist + " km");
+                            isFlying = true; // Force flying mode if distance is greater than 100 km
+                        }
 
                         // Check if the mode has changed
                         if (
@@ -159,6 +164,7 @@ async function filterData(data) {
 
                         // Add the point to the current segment
                         currentSegment.push([lat, lng]);
+                        //addPopup(lat, lng, feature);
                     }
                 } else {
                     // Always add the first point

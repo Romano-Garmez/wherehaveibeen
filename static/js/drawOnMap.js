@@ -27,6 +27,7 @@ async function calculateNoRoute(latlngs, minDistBetweenPoints = 0.1) { //0.01 is
         // Add the current point if it's far enough from all previous points
         if (isFarEnough) {
             processedLatlngs.push(currentPoint);
+    
         }
 
         // Every 100 iterations, yield control back to the browser to allow the UI to update

@@ -61,6 +61,13 @@
             //get owntracks stats
             getOwntracksStats(data);
 
+            totalNumSegments = drivingLatlngs.length * 3 + flyingLatlngs.length * 3;
+            //console.log("totalNumSegments", totalNumSegments);
+            setProgressBarNumSteps(totalNumSegments + getNumTasksDone());
+            //console.log("totalNumSegments + init tasks", totalNumSegments * 3 + getNumTasksDone());
+
+            //console.log("tasks complete so far: ", getNumTasksDone());
+
             for (const latlngs of drivingLatlngs) {
                 //drawing buffer
                 if (latlngs.length > 1) {
