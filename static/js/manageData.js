@@ -3,6 +3,7 @@
 //skip points withing .5 km of the previous point
 const minDistanceFilter = .5; // Adjust the distance threshold in kilometers (10 meters for example)
 const drivingFlyingThresholdKMH = 200; // If above threshold, assume flying, else driving
+const distanceBetweenPointsFlyingThreshold = 100; // If distance is greater than this, assume flying
 
 //stats
 let highestAltitude = 0;
@@ -136,8 +137,7 @@ async function filterData(data) {
                     if (dist > minDistanceFilter) {
                         let isFlying = feature.properties.vel > drivingFlyingThresholdKMH;
 
-                        if (dist > 100) {
-                            //console.log("Distance between points: " + dist + " km");
+                        if (dist > distanceBetweenPointsFlyingThreshold) {
                             isFlying = true; // Force flying mode if distance is greater than 100 km
                         }
 
@@ -164,7 +164,6 @@ async function filterData(data) {
 
                         // Add the point to the current segment
                         currentSegment.push([lat, lng]);
-                        //addPopup(lat, lng, feature);
                     }
                 } else {
                     // Always add the first point
@@ -231,7 +230,6 @@ function getHighestVelocity() {
  * @returns
  */
 function getCoverageStats(buffered, lineString) {
-    //TODO: fix this to handle multiple linestrings (add to vars rather than overwrite)
     let start = Date.now();
 
     // Convert distance to kilometers
