@@ -39,7 +39,7 @@ async function calculateNoRoute(latlngs, minDistBetweenPoints = 0.1) { //0.01 is
     let lineString = turf.lineString(processedLatlngs);
 
     let timeTaken = Date.now() - start;
-    //completeTask("no route calculation", timeTaken);
+    completeTask("no route calculation", timeTaken);
 
     return lineString;
 }
@@ -69,7 +69,7 @@ async function calculateSimpleRoute(latlngs) {
     let lineString = turf.lineString(processedLatlngs);
 
     let timeTaken = Date.now() - start;
-    //completeTask("simple route calculation", timeTaken);
+    completeTask("simple route calculation", timeTaken);
 
     return lineString;
 }
@@ -155,6 +155,8 @@ async function drawBuffer(lineString, tolerance, color) {
         resolve();
     }, 0));
 
+    let bufferColor = "rgba(0, 0, 255, 0.4)"; // Default color is blue
+    // Set the buffer color based on the selected color
     if (color == "blue") {
         bufferColor = "rgba(0, 0, 255, 0.4)";
     } else if (color == "green") {

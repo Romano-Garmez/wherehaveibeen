@@ -142,16 +142,19 @@ async function filterData(data) {
                             (!isFlying && currentMode !== 'driving')
                         ) {
                             // Save the current segment to the appropriate array
-                            if (currentMode === 'flying') {
-                                flyingLatlngs.push(currentSegment);
-                            } else if (currentMode === 'driving') {
-                                console.log("Driving segment: " + currentSegment);
-                                drivingLatlngs.push(currentSegment);
-                            }
 
-                            // Start a new segment
-                            currentSegment = [];
-                            currentMode = isFlying ? 'flying' : 'driving';
+                            //skip segments with only one point
+                            if (currentSegment.length > 1) {
+                                if (currentMode === 'flying') {
+                                    flyingLatlngs.push(currentSegment);
+                                } else if (currentMode === 'driving') {
+                                    drivingLatlngs.push(currentSegment);
+                                }
+
+                                // Start a new segment
+                                currentSegment = [];
+                                currentMode = isFlying ? 'flying' : 'driving';
+                            }
                         }
 
                         // Add the point to the current segment

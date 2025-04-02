@@ -1,6 +1,7 @@
 let tasksDone = [];
 let progressBarNumSteps = 5;
 let progressBarError = false;
+let progressBarCurrentStep = 0;
 
 /**
  * Mark a task complete and update the progress bar. Prints to console with what task finished and how long it took to complete.
@@ -10,6 +11,8 @@ let progressBarError = false;
 function completeTask(task, timeTaken) {
     tasksDone.push(task);
     console.log("Task " + task + " completed in " + timeTaken + " milliseconds");
+    progressBarCurrentStep = tasksDone.length;
+    console.log("current step: " + progressBarCurrentStep);
 
     // Allow the browser to repaint after the task completes
     setTimeout(updateProgressBar, 0);
@@ -28,7 +31,6 @@ function getNumTasksDone() {
  * Changes color based on status
  */
 async function updateProgressBar() {
-    //console.log("Updating progress bar with value " + getNumTasksDone());
 
     let totalTasks = progressBarNumSteps;
 

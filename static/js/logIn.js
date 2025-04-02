@@ -77,7 +77,6 @@ async function getUserSettings() {
         //osrm url
         let select = document.getElementById("osrmURL");
         select.value = data.osrmURL;
-        //console.log(data.osrmURL);
 
         //buffer size
         select = document.getElementById("circleSize");
@@ -86,7 +85,6 @@ async function getUserSettings() {
         } else {
             select.value = 0.5;
         }
-        //console.log(data.circleSize);
 
 
         return 0;  // Return 0 if everything is successful
