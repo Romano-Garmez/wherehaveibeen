@@ -117,8 +117,15 @@ async function calculateSimpleRoute(latlngs) {
  * @param {Array} latlngs - The gps points to draw the route with
  */
 async function calculateComplexRoute(latlngs) {
+    console.log("latlngs: ", latlngs);
     let start = Date.now();
-    const osrmRouter = document.getElementById('osrmURL').value;
+
+    let osrmRouter = "";
+    try {
+        osrmRouter = document.getElementById('osrmURL').value;
+    } catch (err) {
+        console.log("No custom OSRM router found, using default");
+    }
 
     if (osrmRouter != "") {
         console.log("Using custom OSRM router: " + osrmRouter);
@@ -224,11 +231,19 @@ async function createUnifiedBuffer(lineStrings, tolerance, color) {
 async function drawBuffer(lineString, tolerance) {
     let start = Date.now();
 
-    // Get the circle size from the UI
-    const circleSize = document.getElementById('circleSize').value;
+    let circleSize = 1; // Default circle size in km
+    try {
+        // Get the circle size from the UI
+        circleSize = document.getElementById('circleSize').value;
+    } catch (err) {
+        console.log("No circle size found, using default");
+    }
 
-    // Simplify the route in chunks to avoid freezing the UI
-    let simplifiedLineString = turf.simplify(lineString, { tolerance: tolerance, highQuality: false });
+    let simplifiedLineString = lineString;
+    if (tolerance != -1) {
+        // Simplify the route in chunks to avoid freezing the UI
+        simplifiedLineString = turf.simplify(lineString, { tolerance: tolerance, highQuality: false });
+    }
 
     // Add a short pause to ensure the UI updates before buffering
     await new Promise(resolve => setTimeout(resolve, 0));
