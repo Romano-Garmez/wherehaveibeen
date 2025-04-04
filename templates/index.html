@@ -66,9 +66,13 @@
             let totalNumSegments = drivingLatlngs.length * 3 + flyingLatlngs.length * 3;
             setProgressBarNumSteps(totalNumSegments + getNumTasksDone() + extraTasks);
 
-            calculateAndDrawRoute(data, drivingLatlngs, "blue")
+            if (drivingLatlngs.length > 0) {
+                calculateAndDrawRoute(data, drivingLatlngs, "blue")
+            }
 
-            calculateAndDrawRoute(data, flyingLatlngs, "red")
+            if (flyingLatlngs.length > 0) {
+                calculateAndDrawRoute(data, flyingLatlngs, "red")
+            }
         } else {
             openForm();
         }

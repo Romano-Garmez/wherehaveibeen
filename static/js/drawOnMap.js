@@ -26,12 +26,14 @@ async function calculateAndDrawRoute(data, latlngsList, color) {
             }
             updateProgressBar();
 
+            console.log("linestring: ", linestring);
             lineStrings.push(linestring);
         }
 
     }
 
     createUnifiedBuffer(lineStrings, 0.01, color);
+
 }
 
 
@@ -216,8 +218,13 @@ async function createUnifiedBuffer(lineStrings, tolerance, color) {
     }).addTo(map);
 
     // Adjust the map to fit the new buffer bounds
-    const bounds = bufferLayer.getBounds();
-    map.fitBounds(bounds);
+    try {
+        const bounds = bufferLayer.getBounds();
+        map.fitBounds(bounds);
+    }
+    catch (err) {
+        console.log("No bounds found, err: " + err);
+    }
 
     getBufferStats(unifiedBuffer);
     updateProgressBar();
