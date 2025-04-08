@@ -12,7 +12,7 @@ from requests.auth import HTTPBasicAuth
 from datetime import timedelta
 import os
 
-debug = True
+debug = False
 INTERNAL_ERROR_MESSAGE = "An internal error has occurred."
 
 if debug:
