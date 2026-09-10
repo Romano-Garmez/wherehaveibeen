@@ -92,6 +92,9 @@ function createDatePicker(input, options = {}) {
     let viewDate = selected ? new Date(selected) : new Date();
     viewDate.setDate(1);
     let isOpen = false;
+    // Snapshot taken on open so a 'change' event fires once on close, not on
+    // every day/time tap while the user is still picking.
+    let valueAtOpen = "";
 
     // --- Shadow the value accessor so external get/set keeps the string contract ---
     Object.defineProperty(input, "value", {
@@ -148,7 +151,10 @@ function createDatePicker(input, options = {}) {
     popover.className = `whib-datepicker__popover whib-datepicker__popover--${align}`;
     popover.setAttribute("role", "dialog");
     popover.hidden = true;
-    wrapper.appendChild(popover);
+    // Appended to <body>, not the wrapper: the wrapper sits inside .stage,
+    // whose stacking context (z-index 1) would paint the popover under the
+    // top bar no matter how high its own z-index is.
+    document.body.appendChild(popover);
 
     // Calendar header: prev / month-year / next
     const header = document.createElement("div");
@@ -204,6 +210,23 @@ function createDatePicker(input, options = {}) {
     timeInput.type = "time";
     timeInput.className = "whib-datepicker__time-input";
     timeInput.setAttribute("aria-label", "Time");
+
+    // Typed date entry: jumping years by clicking through months is painful.
+    const dateRow = document.createElement("div");
+    dateRow.className = "whib-datepicker__time";
+
+    const dateLabel = document.createElement("span");
+    dateLabel.className = "whib-datepicker__time-label";
+    dateLabel.textContent = "Date";
+
+    const dateInput = document.createElement("input");
+    dateInput.type = "date";
+    dateInput.className = "whib-datepicker__time-input";
+    dateInput.setAttribute("aria-label", "Date");
+
+    dateRow.appendChild(dateLabel);
+    dateRow.appendChild(dateInput);
+    popover.appendChild(dateRow);
 
     timeRow.appendChild(timeLabel);
     timeRow.appendChild(timeInput);
@@ -274,6 +297,33 @@ function createDatePicker(input, options = {}) {
 
         const time = selected || new Date();
         timeInput.value = `${whibPad2(time.getHours())}:${whibPad2(time.getMinutes())}`;
+        // Writing to a focused date input resets the segment being typed, so
+        // the field is only synced once the user has left it (see blur below).
+        if (document.activeElement !== dateInput) syncDateInput();
+    }
+
+    function syncDateInput() {
+        dateInput.value = selected
+            ? `${selected.getFullYear()}-${whibPad2(selected.getMonth() + 1)}-${whibPad2(selected.getDate())}`
+            : "";
+    }
+
+    function commitDate() {
+        const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateInput.value);
+        if (!match) return;
+        const [, y, mo, d] = match.map(Number);
+        // Chrome fires change per keystroke in the year segment, so "0002",
+        // "0020", "0202" arrive before "2025"; treat short years as unfinished.
+        if (y < 1000) return;
+        const [h, m] = whibParseTime(timeInput.value);
+        const next = new Date(y, mo - 1, d, h, m);
+        next.setFullYear(y);
+        if (isNaN(next.getTime())) return;
+        selected = next;
+        viewDate = new Date(selected);
+        viewDate.setDate(1);
+        refreshTrigger();
+        renderCalendar();
     }
 
     // --- Interaction ---
@@ -311,6 +361,8 @@ function createDatePicker(input, options = {}) {
     });
     timeInput.addEventListener("change", commitTime);
     timeInput.addEventListener("input", commitTime);
+    dateInput.addEventListener("change", commitDate);
+    dateInput.addEventListener("blur", syncDateInput);
 
     nowBtn.addEventListener("click", () => {
         selected = new Date();
@@ -328,20 +380,54 @@ function createDatePicker(input, options = {}) {
 
     // Close when clicking outside this picker.
     function onDocClick(event) {
-        if (!wrapper.contains(event.target)) close();
+        if (wrapper.contains(event.target) || popover.contains(event.target)) return;
+        close();
     }
     function onKeyDown(event) {
         if (event.key === "Escape") close();
     }
 
+    // The popover is fixed to the viewport (not absolute inside the wrapper) so
+    // an ancestor with overflow: auto, such as the Configure panel body, can't
+    // clip it. It flips above the trigger when there is no room below, and
+    // when it fits neither way it is pinned to the bottom edge and scrolls.
+    function positionPopover() {
+        const rect = trigger.getBoundingClientRect();
+        const gap = 4;
+        popover.style.maxHeight = (window.innerHeight - gap * 2) + "px";
+        const height = popover.offsetHeight;
+        const roomBelow = window.innerHeight - rect.bottom - gap;
+        const roomAbove = rect.top - gap;
+        let top;
+        if (height <= roomBelow) {
+            top = rect.bottom + gap;
+        } else if (height <= roomAbove) {
+            top = rect.top - gap - height;
+        } else {
+            top = Math.max(gap, window.innerHeight - gap - height);
+        }
+        popover.style.top = top + "px";
+        if (align === "right") {
+            popover.style.left = "auto";
+            popover.style.right = Math.max(gap, window.innerWidth - rect.right) + "px";
+        } else {
+            popover.style.right = "auto";
+            popover.style.left = Math.max(gap, rect.left) + "px";
+        }
+    }
+
     function open() {
         if (isOpen) return;
         isOpen = true;
+        valueAtOpen = input.value;
         popover.hidden = false;
         trigger.setAttribute("aria-expanded", "true");
         renderCalendar();
+        positionPopover();
         document.addEventListener("click", onDocClick, true);
         document.addEventListener("keydown", onKeyDown);
+        window.addEventListener("scroll", positionPopover, true);
+        window.addEventListener("resize", positionPopover);
     }
 
     function close() {
@@ -351,6 +437,11 @@ function createDatePicker(input, options = {}) {
         trigger.setAttribute("aria-expanded", "false");
         document.removeEventListener("click", onDocClick, true);
         document.removeEventListener("keydown", onKeyDown);
+        window.removeEventListener("scroll", positionPopover, true);
+        window.removeEventListener("resize", positionPopover);
+        if (input.value !== valueAtOpen) {
+            input.dispatchEvent(new Event("change", { bubbles: true }));
+        }
     }
 
     refreshTrigger();

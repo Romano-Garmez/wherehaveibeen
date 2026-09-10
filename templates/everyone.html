@@ -4,42 +4,83 @@
 <title>Everyone's Roads</title>
 {% endblock %}
 
+{% block bodyclass %}app-shell{% endblock %}
+
 {% block main %}
 
-<div class="container-fluid" style="padding: var(--spacing-md, 16px);">
-    <h1>Everyone's roads</h1>
-    <p>The combined roads everyone on this server has driven, merged into a single anonymized shape.</p>
-    <p id="everyoneStatus" class="settingInfo" style="min-height: 1.2em;"></p>
-    <div id="everyoneMap" style="height: 65vh; width: 100%; border-radius: 8px; overflow: hidden;"></div>
+<main class="stage">
+    <div class="map-area">
+        <div id="map"></div>
 
-    <!-- Stats are rendered from the shared STAT_DEFINITIONS in statsPanel.js so
-         this page matches the main page's labels and info icons. -->
-    <div id="everyoneStats" style="display: flex; flex-wrap: wrap; gap: var(--spacing-md, 16px); margin-top: var(--spacing-md, 16px);"></div>
-    <script>renderStatPanels(document.getElementById("everyoneStats"), { cards: true });</script>
+        <div class="map-overlay">
+            <div class="chips chips--everyone">
+                <div class="chip chip--info chip--wide">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3d6ba8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4.5 8-11a8 8 0 1 0-16 0c0 6.5 8 11 8 11z"></path><circle cx="12" cy="11" r="3"></circle></svg>
+                    <span>Every road anyone on this server has driven, merged into one anonymised shape. No individual routes, devices or times.</span>
+                </div>
+            </div>
 
-    <!-- Hidden: the shared stat helpers (getBufferStats) report into the progress
-         bar via completeTask(); this keeps them happy without showing a bar. -->
-    <div id="progressBar" style="display: none;">
-        <div id="progressBarInner"></div>
-        <span id="progressBarMessage"></span>
+            <div class="legend legend--share" id="shareCard" hidden>
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#3d6ba8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4.5 8-11a8 8 0 1 0-16 0c0 6.5 8 11 8 11z"></path></svg>
+                <span class="legend__text">Your roads make up <span class="accent" id="sharePct"></span> of this shape</span>
+            </div>
+        </div>
     </div>
-</div>
+
+    <div class="strip" id="progressBar">
+        <div class="strip__fill" id="progressBarInner"></div>
+        <div class="strip__inner">
+            <span class="strip__msg"><span class="strip__dot"></span><span id="progressBarMessage"></span></span>
+            <span class="strip__pct" id="progressBarPercent"></span>
+        </div>
+    </div>
+
+    <div class="ribbon">
+        <div class="ribbon__head">
+            <span class="ribbon__scope">Everyone · all time</span>
+        </div>
+        <div class="ribbon__row" id="statsPanel"></div>
+    </div>
+</main>
 
 {% endblock %}
 
 {% block scripts %}
 <script>
-    // Use the global `map` that the shared renderers in drawOnMap.js expect, so
-    // this page reuses renderCachedBuffer() and the stat helpers in manageData.js
-    // rather than reimplementing them. Same map system, different data source.
-    var map = L.map('everyoneMap').setView([37.7749, -122.4194], 6);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    }).addTo(map);
+    renderStatPanels(document.getElementById("statsPanel"), { variant: "everyone" });
+
+    const currentUser = {{ session.username|tojson }};
+
+    // The shared renderers in drawOnMap.js and the stat helpers in manageData.js
+    // expect a global `map`, so this page reuses them rather than reimplementing.
+    var map = L.map('map', { zoomControl: false }).setView([37.7749, -122.4194], 6);
+    L.control.zoom({ position: 'bottomleft' }).addTo(map);
+    map.attributionControl.setPrefix(false);
+    addBaseLayer();
+
+    async function showYourShare(everyoneAreaKm2) {
+        if (!currentUser || !everyoneAreaKm2) return;
+        const device = localStorage.getItem('whib_device');
+        if (!device) return;
+        try {
+            await initDB();
+            const cache = await getCache(currentUser, device);
+            const mine = cache?.driving?.buffer;
+            if (!mine) return;
+            const pct = (turf.area(mine) / 1e6) / everyoneAreaKm2 * 100;
+            document.getElementById('sharePct').textContent = formatNumber(pct, pct < 10 ? 1 : 0) + "%";
+            document.getElementById('shareCard').hidden = false;
+        } catch (err) {
+            console.log("Couldn't compute your share of the shape:", err);
+        }
+    }
 
     async function loadEveryone() {
-        const status = document.getElementById('everyoneStatus');
-        status.textContent = "Loading everyone's roads… (the first load can take a while)";
+        resetProgressBar();
+        setProgressBarNumSteps(2);
+        setProgressMessage("Loading everyone's roads — the first load can take a while");
+        updateProgressBar();
+
         try {
             const controller = new AbortController();
             const timer = setTimeout(() => controller.abort(), 125000);
@@ -48,27 +89,26 @@
 
             if (resp.status === 401) { window.location.href = "/"; return; }
             if (resp.status === 503) {
-                // Backend is computing the shape in the background — retry shortly.
-                status.textContent = "Still computing on the server — retrying in a few seconds…";
+                setProgressMessage("Still computing on the server — retrying in a few seconds");
                 setTimeout(loadEveryone, 5000);
                 return;
             }
             if (!resp.ok) throw new Error("HTTP " + resp.status);
 
             const buffer = await resp.json();
+            completeTask("fetched everyone's roads", 0);
+
             if (!buffer || !buffer.geometry) {
-                status.textContent = "No road data available yet.";
+                finishProgressBar("No road data available yet");
                 return;
             }
 
-            // Render with the same blue buffer style as the main map (one-shot
-            // render, so nothing to erase first).
             renderCachedBuffer(buffer, "blue");
 
-            // Reuse the main page's stat helpers + formatting. Area / % west coast
-            // come from the polygon; the population-level max speed/altitude and
-            // combined distance come from the backend in the Feature properties.
+            // The aggregate is anonymised by design: properties carry only
+            // max_vel, max_alt and distance_km (see wherehaveibeen-api/aggregate.py).
             const props = buffer.properties || {};
+
             resetCoverageStats();
             getBufferStats(buffer);
             setCachedMetrics({
@@ -77,10 +117,12 @@
                 totalDistance: props.distance_km || 0
             });
 
-            status.textContent = "";
+            finishProgressBar("Complete — merged shape from server");
+            showYourShare(turf.area(buffer) / 1e6);
         } catch (err) {
             console.error("Everyone's roads load failed:", err);
-            status.textContent = "Couldn't load everyone's roads — refresh to try again.";
+            setProgressBarError();
+            setProgressMessage("Couldn't load everyone's roads — refresh to try again");
         }
     }
 

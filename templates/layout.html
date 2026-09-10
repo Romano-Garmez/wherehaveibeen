@@ -2,8 +2,13 @@
 <html lang="en">
 
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     {% block title %}{% endblock %}
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <!-- Leaflet maps and routing -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -16,16 +21,6 @@
 
     <!-- Buffer drawing and math -->
     <script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
-
-    <!-- Bootstrap and jquery for visuals and navbar -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
-        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"
-        integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p"></script>
-        
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"
-        integrity="sha384-1H217gwSVyLSIfaLxHbE7dRb3v4mYCKbpQvzx0cegeju1MVsGrX5xXxAvs/HgeFs"
-        crossorigin="anonymous"></script>
 
     <!-- Custom CSS and scripts -->
     <link href="/static/css/styles.css" rel="stylesheet">
@@ -40,51 +35,66 @@
     <link rel="icon" type="image/x-icon" href="/static/favicon/wherehaveibeen.png">
 </head>
 
-<body>
-    <nav class="navbar navbar-expand-lg">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="/">WhereHaveIBeen</a>
-            <button class="navbar-toggler navbar-dark" type="button" data-bs-toggle="collapse"
-                data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false"
-                aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
+<body class="{% block bodyclass %}{% endblock %}">
+    <header class="topbar">
+        <a class="brand" href="/">WhereHaveIBeen</a>
+
+        <nav class="scope" aria-label="Map scope">
+            <a class="scope__btn{% if request.path == '/' %} is-active{% endif %}" href="/">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 20l-5.447-2.724A1 1 0 0 1 3 16.382V5.618a1 1 0 0 1 1.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0 0 21 18.382V7.618a1 1 0 0 0-.553-.894L15 4m0 13V4m0 0L9 7"></path></svg>
+                My Roads
+            </a>
+            <a class="scope__btn{% if request.path == '/everyone' %} is-active{% endif %}" href="/everyone">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                <span>Everyone<span class="scope__long">'s Roads</span></span>
+            </a>
+        </nav>
+
+        <div class="topbar__spacer"></div>
+
+        <div class="topbar__links">
+            <a class="topbar__link{% if request.path == '/about' %} is-active{% endif %}" href="/about">About</a>
+            <a class="topbar__link{% if request.path == '/how-to-use' %} is-active{% endif %}" href="/how-to-use">How to use</a>
+        </div>
+
+        {% if session.username %}
+        <div class="user" id="userMenu">
+            <button type="button" class="user__btn" onclick="toggleUserMenu()" aria-haspopup="true" aria-expanded="false">
+                <span class="avatar">{{ session.username[:2]|upper }}</span>
+                <span class="user__name">{{ session.username }}</span>
+                <svg class="user__chev" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </button>
-            <div class="collapse navbar-collapse" id="navbarSupportedContent">
-                <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
-                    <li class="nav-item">
-                        <a class="nav-link" href="/">Home</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/everyone">Everyone's Roads</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/about">About</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/how-to-use">How To Use</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="https://owntracks.org/">OwnTracks</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" id="sign_out" href="/sign_out">Sign Out</a>
-                    </li>
-                </ul>
+            <div class="user__menu" id="userMenuList" hidden>
+                <a class="user__item user__item--mobile" href="/about">About</a>
+                <a class="user__item user__item--mobile" href="/how-to-use">How to use</a>
+                <a class="user__item" href="/sign_out">Sign out</a>
             </div>
         </div>
-        <script> jQuery(function ($) {
-                var path = window.location.href;
-                // because the 'href' property of the DOM element is the absolute path
-                $('ul a').each(function () {
-                    if (this.href === path) {
-                        $(this).addClass('active');
-                    }
-                });
-            });</script>
-    </nav>
-    {% block main %}{% endblock %}
-</body>
+        {% else %}
+        <a class="topbar__link" href="/">Log in</a>
+        {% endif %}
+    </header>
 
-{% block scripts %}{% endblock %}
+    <script>
+        function toggleUserMenu() {
+            const list = document.getElementById('userMenuList');
+            const btn = document.querySelector('#userMenu .user__btn');
+            if (!list) return;
+            list.hidden = !list.hidden;
+            if (btn) btn.setAttribute('aria-expanded', String(!list.hidden));
+        }
+
+        document.addEventListener('click', function (event) {
+            const menu = document.getElementById('userMenu');
+            const list = document.getElementById('userMenuList');
+            if (!menu || !list || list.hidden) return;
+            if (!menu.contains(event.target)) toggleUserMenu();
+        });
+    </script>
+
+    {% block main %}{% endblock %}
+
+    {% block scripts %}{% endblock %}
+</body>
 
 </html>
