@@ -213,6 +213,9 @@ function changeDateRange(timeframe) {
 // just before it, and only closes once speed falls to taxiing pace, which a car
 // on a freeway does but a plane on approach never does.
 const FLIGHT_EXIT_KMH = 100;
+// Above the highest road on Earth (~5,600 m): a fix this high is airborne
+// whatever its speed says.
+const FLIGHT_ALTITUDE_M = 6000;
 const FLIGHT_LOOKBACK_SECONDS = 30 * 60;
 const FLIGHT_STALE_SECONDS = 30 * 60;
 
@@ -238,61 +241,83 @@ function isFlightFeature(feature) {
     return lastFlightIntervals.some(([from, to]) => t >= from && t <= to);
 }
 
-// Classifies every kept point as flying or not and records the flight time
-// windows used by the stats. Returns the kept points with their flags.
+// Classifies every fix as flying or not and records the flight time windows
+// used by the stats. Classification runs over ALL fixes: aircraft GPS often
+// reports poor accuracy, and the accuracy/min-distance filters only apply to
+// what gets drawn. Returns the drawable subset with its flags.
 function detectFlights(data) {
-    const kept = [];
+    const all = [];
     let prev = null;
     data.features.forEach(feature => {
         if (!feature.geometry?.coordinates) return;
-        //markers with velocity of zero and high acceleration tend to be very inaccurate, skip them
-        if (feature.properties.acc >= 100) return;
         const [lng, lat] = feature.geometry.coordinates;
         const jump = prev ? getDistanceFromLatLonInKm(prev.lat, prev.lng, lat, lng) : 0;
-        if (prev && jump <= minDistanceFilter) return;
-        const point = { lat, lng, vel: feature.properties.vel || 0, tst: featureTime(feature), jump };
-        kept.push(point);
+        const point = {
+            lat, lng, jump,
+            vel: feature.properties.vel || 0,
+            alt: feature.properties.alt || 0,
+            acc: feature.properties.acc,
+            tst: featureTime(feature)
+        };
+        all.push(point);
         prev = point;
     });
 
-    const flying = new Array(kept.length).fill(false);
+    const flying = new Array(all.length).fill(false);
     let airborne = false;
-    let lastFastTime = null;
-    kept.forEach((point, i) => {
+    let lastSignalTime = null;
+    all.forEach((point, i) => {
         const fast = point.vel > drivingFlyingThresholdKMH;
+        const high = point.alt > FLIGHT_ALTITUDE_M;
         const jumped = point.jump > distanceBetweenPointsFlyingThreshold;
-        if (!airborne && (fast || jumped)) {
+        const signal = fast || high || jumped;
+        if (!airborne && signal) {
             airborne = true;
             // Pull the take-off roll into the flight. The point right before a
             // jump is exempt from the time window: it is the last fix the phone
             // sent before going quiet in the air, however long the flight was.
             let ref = point.tst;
             for (let j = i - 1; j >= 0 && !flying[j]; j--) {
-                if (kept[j].vel <= FLIGHT_EXIT_KMH) break;
+                if (all[j].vel <= FLIGHT_EXIT_KMH) break;
                 const beforeJump = jumped && j === i - 1;
-                if (!beforeJump && ref - kept[j].tst > FLIGHT_LOOKBACK_SECONDS) break;
+                if (!beforeJump && ref - all[j].tst > FLIGHT_LOOKBACK_SECONDS) break;
                 flying[j] = true;
-                ref = kept[j].tst;
+                ref = all[j].tst;
             }
-        } else if (airborne && !fast && !jumped) {
-            const stale = lastFastTime !== null && point.tst - lastFastTime > FLIGHT_STALE_SECONDS;
+        } else if (airborne && !signal) {
+            const stale = lastSignalTime !== null && point.tst - lastSignalTime > FLIGHT_STALE_SECONDS;
             if (point.vel < FLIGHT_EXIT_KMH || stale) airborne = false;
         }
-        if (fast || jumped) lastFastTime = point.tst;
+        if (signal) lastSignalTime = point.tst;
         flying[i] = airborne;
     });
 
     const intervals = [];
     let i = 0;
-    while (i < kept.length) {
+    while (i < all.length) {
         let j = i;
-        while (j < kept.length && flying[j] === flying[i]) j++;
-        if (flying[i]) intervals.push([kept[i].tst, kept[j - 1].tst]);
+        while (j < all.length && flying[j] === flying[i]) j++;
+        if (flying[i]) intervals.push([all[i].tst, all[j - 1].tst]);
         i = j;
     }
     lastFlightIntervals = intervals;
 
-    return { kept, flying };
+    //markers with velocity of zero and high acceleration tend to be very inaccurate, skip them
+    const kept = [];
+    const keptFlying = [];
+    let lastKept = null;
+    all.forEach((point, idx) => {
+        if (point.acc >= 100) return;
+        const gap = lastKept ? getDistanceFromLatLonInKm(lastKept.lat, lastKept.lng, point.lat, point.lng) : 0;
+        if (lastKept && gap <= minDistanceFilter) return;
+        kept.push(point);
+        // The fixes that carried the jump may have been dropped for accuracy,
+        // so a long link between drawable fixes is a flight in its own right.
+        keptFlying.push(flying[idx] || gap > distanceBetweenPointsFlyingThreshold);
+        lastKept = point;
+    });
+
+    return { kept, flying: keptFlying };
 }
 
 async function filterData(data) {
@@ -423,13 +448,17 @@ function resetCoverageStats() {
 
 function accumulatePointStats(data) {
     let fastestDrivingPoint = null;
+    let highestDrivingPoint = null;
     data.features.forEach(feature => {
         const { alt, vel } = feature.properties;
         if (isFlightFeature(feature)) {
             if (alt > flightHighestAltitude) flightHighestAltitude = alt;
             if (vel > flightHighestVelocity) flightHighestVelocity = vel;
         } else {
-            if (alt > highestAltitude) highestAltitude = alt;
+            if (alt > highestAltitude) {
+                highestAltitude = alt;
+                highestDrivingPoint = feature;
+            }
             if (vel > highestVelocity) {
                 highestVelocity = vel;
                 fastestDrivingPoint = feature;
@@ -439,6 +468,10 @@ function accumulatePointStats(data) {
     if (fastestDrivingPoint) {
         const p = fastestDrivingPoint.properties;
         console.log(`Top driving speed ${p.vel} km/h at ${p.isotst}`, fastestDrivingPoint.geometry.coordinates);
+    }
+    if (highestDrivingPoint) {
+        const p = highestDrivingPoint.properties;
+        console.log(`Top driving altitude ${p.alt} m at ${p.isotst}`, highestDrivingPoint.geometry.coordinates);
     }
 }
 

@@ -7,7 +7,7 @@ const FT_PER_M = 3.28084;
 const WEST_COAST_KM2 = 863428;
 
 const STAT_DEFINITIONS = [
-    { id: "totalDist", label: "Distance driven", everyoneLabel: "Combined distance", unit: "mi" },
+    { id: "totalDist", label: "Distance driven", flightsLabel: "Distance travelled", everyoneLabel: "Combined distance", unit: "mi" },
     { id: "totalArea", label: "Area explored", unit: "mi²" },
     { id: "totalAreaPct", label: "West coast covered", unit: "%", accent: true, bar: true },
     { id: "highestAltitude", label: "Highest altitude", unit: "ft" },
@@ -44,6 +44,7 @@ function renderStatPanels(container, { variant = "mine" } = {}) {
 
         const label = document.createElement("span");
         label.className = "stat__label";
+        label.id = def.id + "Label";
         label.textContent = variant === "everyone" && def.everyoneLabel ? def.everyoneLabel : def.label;
 
         const value = document.createElement("span");
@@ -97,6 +98,9 @@ function showDistanceStat(km, flightsIncluded = false) {
         notes.push("everyone on this server");
     } else {
         notes.push(flightsIncluded ? "flights included" : "flights excluded");
+        const def = STAT_DEFINITIONS.find((d) => d.id === "totalDist");
+        const labelEl = document.getElementById("totalDistLabel");
+        if (labelEl) labelEl.textContent = flightsIncluded ? def.flightsLabel : def.label;
     }
     setStat("totalDist", formatMeasure(km / KM_PER_MI), notes.join(" · "));
 }
