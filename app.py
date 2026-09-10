@@ -36,7 +36,6 @@ app.config.update(
     SESSION_COOKIE_SAMESITE="Lax",
 )
 
-DEFAULT_OSRM_URL = os.getenv("WHIB_DEFAULT_OSRM_URL")
 OWNTRACKS_URL = os.getenv("WHIB_OWNTRACKS_URL")
 
 # TRMNL e-ink display endpoints (/trmnl, /trmnl/preview) live in the trmnl package.
@@ -328,46 +327,7 @@ def get_users_devices():
         return jsonify({"error": INTERNAL_ERROR_MESSAGE}), 500
 
 
-"""Proxy routing requests to our OSRM server.
-
-The OSRM server only speaks HTTP, so the browser can't call it directly from an
-HTTPS page (mixed-content). This route forwards the request server-side.
-
-The OSRM target is fixed to WHIB_DEFAULT_OSRM_URL — we deliberately do NOT accept
-a client-supplied target URL. Letting the client choose the URL turned this into
-an open SSRF proxy (any caller could make the server fetch arbitrary internal or
-external URLs). Custom OSRM routers are no longer supported.
-"""
-
-
-@app.route("/proxy", methods=["GET"])
-def proxy_route():
-    # Require a valid session so this isn't an open, unauthenticated proxy.
-    if not session.get("username"):
-        return jsonify({"error": "Not logged in."}), 401
-
-    coords = request.args.get("coords")
-    if not coords:
-        return jsonify({"error": "Missing coords parameter."}), 400
-    # The client prefixes coords with a leading separator char; strip it.
-    coords = coords[1:]
-
-    target_url = f"{DEFAULT_OSRM_URL}/route/v1/{coords}"
-    if target_url.endswith("?overview=false"):
-        target_url = target_url.replace("?overview=false", "")
-
-    try:
-        response = requests.get(target_url, timeout=30)
-        response.raise_for_status()
-        return jsonify(response.json())
-    except requests.RequestException as err:
-        app.logger.error(f"Proxy: Error contacting OSRM server: {err}")
-        return jsonify({"error": INTERNAL_ERROR_MESSAGE}), 502
-
-
 if __name__ == "__main__":
-    if os.getenv("WHIB_DEFAULT_OSRM_URL") == None:
-        sys.exit("Missing Environment Variable: WHIB_DEFAULT_OSRM_URL")
     if os.getenv("WHIB_FLASK_SECRET_KEY") == None:
         sys.exit("Missing Environment Variable: WHIB_FLASK_SECRET_KEY")
     if os.getenv("WHIB_OWNTRACKS_URL") == None:

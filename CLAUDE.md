@@ -22,14 +22,12 @@ For VS Code debugging, use the preconfigured Flask debugger in `.vscode/launch.j
 
 Create a `.env` file with:
 - `WHIB_FLASK_SECRET_KEY` - Flask session secret key
-- `WHIB_DEFAULT_OSRM_URL` - OSRM routing service URL
 
 ## Architecture
 
 **Backend (Flask - `app.py`):**
 - Session-based authentication storing OwnTracks credentials
 - Proxy endpoints for OwnTracks API (`/locations`, `/usersdevices`)
-- OSRM routing proxy (`/proxy`) to handle HTTPS/HTTP compatibility
 - Settings persistence in Flask session (`/save_settings`, `/get_settings`)
 
 **Frontend (Vanilla JS in `static/js/`):**
@@ -47,8 +45,7 @@ OwnTracks Server → Flask Backend (proxy/auth) → Frontend JS → Leaflet Map
 ```
 
 **Routing Strategies (based on point count):**
-- Complex: OSRM server routing (snaps to roads)
-- Simple: Turf.js buffering (fallback)
+- Simple: straight segments between fixes, buffered with Turf.js
 - NoRoute: Point filtering only (very large datasets)
 
 ## Key Libraries
@@ -99,11 +96,6 @@ Production is hosted on Fly.io using Docker (see `fly.toml` and `Dockerfile`).
          │ GeoJSON response      │                        │
          │<──────────────────────│                        │
          │                       │                        │
-         │ GET /proxy?coords=... │     ┌─────────────────┐│
-         │──────────────────────>│────>│   OSRM Server   ││
-         │ Route JSON            │<────│   (External)    ││
-         │<──────────────────────│     └─────────────────┘│
-         │                       │                        │
          │ Store in IndexedDB    │                        │
          │ (browser cache)       │                        │
 └─────────────────┘     └──────────────────┘     └──────────────────┘
@@ -128,7 +120,6 @@ Production is hosted on Fly.io using Docker (see `fly.toml` and `Dockerfile`).
 | `password` | OwnTracks password | `/login` |
 | `serverurl` | OwnTracks server URL (e.g., `https://owntracks.example.com`) | `/login` |
 | `circle_size` | Buffer size setting (km) | `/save_settings` |
-| `osrm_url` | Custom OSRM router URL | `/save_settings` |
 
 ### API Endpoints
 
@@ -158,20 +149,8 @@ These endpoints require a valid session and proxy requests to the user's OwnTrac
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/save_settings` | POST | Save `circleSize` and `osrmURL` to session |
+| `/save_settings` | POST | Save `circleSize` to session |
 | `/get_settings` | GET | Retrieve saved settings |
-
-#### OSRM Routing Proxy
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/proxy` | GET | Forward routing requests to OSRM server |
-
-**Purpose:** Bypasses mixed-content (HTTPS/HTTP) browser restrictions when the OSRM server doesn't support HTTPS.
-
-**Query Parameters:**
-- `osrmURL` - Custom OSRM server URL (optional, falls back to `WHIB_DEFAULT_OSRM_URL`)
-- `coords` - Coordinate string for OSRM routing API
 
 #### TRMNL e-ink display
 
@@ -206,12 +185,9 @@ Routes are calculated differently based on GPS point count:
 
 | Point Count | Strategy | Description |
 |-------------|----------|-------------|
-| < 500 | Complex | OSRM road routing (snaps to actual roads) |
-| 500 - 3000 | Simple | Direct line connections via Turf.js |
+| < 3000 | Simple | Direct line connections via Turf.js |
 | 3000 - 5000 | NoRoute | Point filtering, 10m minimum spacing |
 | > 5000 | NoRoute | Point filtering, 100m minimum spacing |
-
-**Fallback:** Complex routing falls back to Simple if OSRM fails (e.g., points over water with no road route).
 
 ### Frontend Authentication Flow
 
@@ -233,7 +209,7 @@ Page Load (index.html)
 **Key Frontend Files:**
 - `logIn.js` - Session validation, settings load/save
 - `manageData.js` - Data fetching from `/locations`, filtering, statistics
-- `drawOnMap.js` - Route calculation (Complex/Simple/NoRoute), Leaflet rendering
+- `drawOnMap.js` - Route calculation (Simple/NoRoute), Leaflet rendering
 - `cacheManager.js` - IndexedDB cache management
 
 ### IndexedDB Caching
@@ -245,14 +221,13 @@ The frontend caches processed route data in IndexedDB to avoid re-fetching and r
 {
   driving: { buffer: GeoJSON, timestamp, startTimestamp },
   flying: { buffer: GeoJSON, timestamp, startTimestamp },
-  settings: { bufferSize, osrmUrl },
+  settings: { bufferSize },
   metrics: { highestAltitude, highestVelocity, totalDistance }
 }
 ```
 
 **Cache Invalidation Triggers:**
 - Buffer size (`circleSize`) setting changed
-- OSRM URL changed
 - Manual cache clear by user
 
 ---
