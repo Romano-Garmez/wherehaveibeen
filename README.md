@@ -7,13 +7,19 @@
  ## Example Screenshots
 
 ![complexmode](screenshots/ComplexMode.png)
-### WhereHaveIBeen showing the roads I've travelled in the last week
+### WhereHaveIBeen showing the roads I travelled over a long weekend, snapped to the road network
 
 <br>
 <br>
 
 ![simplemode](screenshots/SimpleMode.png)
 ### WhereHaveIBeen showing the roads I've travelled since beginning recording
+
+<br>
+<br>
+
+![heatmap](screenshots/Heatmap.png)
+### Heatmap mode shades how often you've been somewhere
 
 ---
 
@@ -29,7 +35,7 @@ WhereHaveIBeen is a web app to display your OwnTracks location history while doi
 ## Extra Features
 
 ![InfoBox](screenshots/InfoBox.png)
-### Get stats on your OwnTracks data! Show the total distance travelled, area explored, as well as highest altitude and velocity.
+### Get stats on your OwnTracks data! Distance driven, area explored, how much of the west coast you've covered, highest altitude and top speed. Plane flights are detected and kept out of the driving totals.
 
 <br>
 <br>
@@ -41,7 +47,7 @@ WhereHaveIBeen is a web app to display your OwnTracks location history while doi
 <br>
 
 ![Settings](screenshots/Settings.png)
-### Adjust how the map is drawn and change the routing URL if you host your own OSRM server.
+### Adjust how the map is drawn: switch between routes and heatmap, show or hide flights, and change the buffer size around each road.
 
 ---
 ## What's on the way?
@@ -51,9 +57,17 @@ Hopefully a Google Maps Timeline import feature, as Timeline is changing to be l
 
 ---
 ## Recently added!
-A better user settings system. Settings are no longer wiped on page refresh! You can change map buffer settings and the OSRM routing URL and WhereHaveIBeen will remmeber.
+**A new look.** Version 3.0 reworks the whole interface: the map fills the page, the filters and settings live in a single Configure popover, and the stats sit in a ribbon under the map with imperial units first and metric underneath.
 
-Currently I host an OSRM server with the data from Washington, Oregon, and California, but if you live elsewhere you can use your own. If you are unable to/unwilling to host your own, you can use the url for the public OSRM demo server.
+**Heatmap mode.** Switch from Routes to Heatmap to shade how often you've been somewhere instead of drawing every path.
+
+**Flight detection.** Plane trips are picked out of your GPS history automatically. They're drawn as a dashed line if you want them, and they're always kept out of your driven roads, distance, and area totals.
+
+**Everyone's Roads.** A merged map of every user on the server, with your share of the total area explored.
+
+**Accounts.** You can create an account straight from the home page, and the setup guide walks you through pointing the OwnTracks app at the server.
+
+**TRMNL e-ink plugin.** Your last 30 days of driving as a road map with headline stats, rendered for the TRMNL 800×480 screen. See `trmnl/README.md`.
 
 ---
 ## Want to learn more?
