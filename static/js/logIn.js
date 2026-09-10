@@ -67,6 +67,10 @@ async function getUsersAndDevices() {
         });
         loggedIn = true;
 
+        if (typeof renderDeviceChips === 'function') {
+            renderDeviceChips();
+        }
+
         return 0;  // Return 0 if everything is successful
 
     } catch (error) {
@@ -96,6 +100,9 @@ async function getUserSettings() {
             select.value = 0.5;
         }
 
+        if (typeof syncBufferStepper === 'function') {
+            syncBufferStepper();
+        }
 
         return 0;  // Return 0 if everything is successful
     } catch (error) {
@@ -110,7 +117,6 @@ async function getUserSettings() {
 function openForm() {
     document.getElementById("myForm").style.display = "block";
     document.getElementById("registerForm").style.display = "none";
-    document.getElementById("sign_out").style.display = "none";
 }
 
 /**
@@ -119,7 +125,6 @@ function openForm() {
 function closeForm() {
     document.getElementById("myForm").style.display = "none";
     document.getElementById("registerForm").style.display = "none";
-    document.getElementById("sign_out").style.display = "block";
 }
 
 /**
@@ -144,7 +149,7 @@ function showLoginForm() {
  * Show delete account confirmation modal
  */
 function showDeleteConfirm() {
-    closeSettingsPanel();
+    closeConfig();
     document.getElementById("deleteConfirmBackdrop").style.display = "block";
     document.getElementById("deleteConfirmForm").style.display = "block";
     document.getElementById("deletePassword").value = "";
@@ -214,7 +219,7 @@ function hideSetupGuide() {
  * Show setup guide from settings panel (closes settings first)
  */
 function showSetupGuideFromSettings() {
-    closeSettingsPanel();
+    closeConfig();
     showSetupGuide();
 }
 

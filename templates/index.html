@@ -1,21 +1,215 @@
 {% extends "layout.html" %}
 
-{%block title %}
+{% block title %}
 <title>WhereHaveIBeen Map</title>
-{%endblock%}
+{% endblock %}
+
+{% block bodyclass %}app-shell{% endblock %}
 
 {% block main %}
 
+<main class="stage">
+    <div class="map-area" id="mapArea">
+        <div id="map"></div>
 
-<!-- Get OwnTracks server info so we can read data from it -->
-<div id="map-container">
-    <div class="form-popup" id="myForm" style="display: {% if login_error %}block{% else %}none{% endif %};">
-        <h3>Log In</h3>
-        <div class="form-container">
-            <form action="/login" method="POST">
-                <input type='text' placeholder='Username' name='username' autocomplete="on" />
+        <div class="map-overlay">
+            <div class="chips" id="chips">
+                <div class="seg" id="modeSeg">
+                    <button type="button" class="seg__btn" data-mode="routes" onclick="setMapMode('routes')">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
+                        Routes
+                    </button>
+                    <button type="button" class="seg__btn" data-mode="heatmap" onclick="setMapMode('heatmap')">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                        Heatmap
+                    </button>
+                </div>
+
+                <button type="button" class="chip chip--mode" id="modeChip" onclick="toggleMapMode()" title="Switch view mode">
+                    <svg class="icon-routes" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
+                    <svg class="icon-heatmap" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" hidden><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                    <span id="modeChipLabel">Routes</span>
+                </button>
+
+                <button type="button" class="chip" id="flightsChip" onclick="toggleFlights()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2 16 11l3.5-3.5a2.12 2.12 0 0 0-3-3L13 8 4.8 6.2a.5.5 0 0 0-.5.8l3.2 4-2.2 2.2a.5.5 0 0 0 .3.85l3 .4.4 3a.5.5 0 0 0 .85.3L12 15.5l4 3.2a.5.5 0 0 0 .8-.5z"></path></svg>
+                    <span id="flightsChipLabel">Flights hidden</span>
+                </button>
+
+                <button type="button" class="chip chip--config" id="configChip" onclick="toggleConfig()" aria-haspopup="dialog" aria-expanded="false">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
+                    <span>Configure</span>
+                    <span class="chip__divider"></span>
+                    <span class="chip__range" id="configRange">All time</span>
+                    <svg class="chip__chev" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </button>
+
+                <div class="chips__spacer"></div>
+
+                <button type="button" class="chip chip--reload" id="reloadBtn" onclick="reloadData()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9 9 0 0 1 6.7 3H21"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-9 9 9 9 0 0 1-6.7-3H3"></path><path d="M3 21v-5h5"></path></svg>
+                    <span id="reloadLabel">Loading…</span>
+                </button>
+            </div>
+
+            <div class="cfg-backdrop" id="cfgBackdrop" onclick="closeConfig()"></div>
+
+            <section class="cfg" id="cfg" hidden role="dialog" aria-label="Configure">
+                <div class="cfg__handle"><span></span></div>
+                <div class="cfg__head">
+                    <h3 class="cfg__title">Configure</h3>
+                    <button type="button" class="cfg__close" onclick="closeConfig()" aria-label="Close">×</button>
+                </div>
+                <div class="cfg__tabs" role="tablist">
+                    <button type="button" class="cfg__tab is-active" data-tab="data" onclick="showConfigTab('data')">Data</button>
+                    <button type="button" class="cfg__tab" data-tab="map" onclick="showConfigTab('map')">Map</button>
+                    <button type="button" class="cfg__tab" data-tab="cache" onclick="showConfigTab('cache')">Cache</button>
+                    <button type="button" class="cfg__tab" data-tab="account" onclick="showConfigTab('account')">Account</button>
+                </div>
+
+                <div class="cfg__body">
+                    <div class="cfg__pane" id="cfgPaneData">
+                        <div>
+                            <div class="field__head">
+                                <h5 class="field__label">Device</h5>
+                                <span class="field__meta" id="deviceCount">0 reporting</span>
+                            </div>
+                            <div class="device-chips" id="deviceChips">
+                                <span class="field__meta">No devices have reported yet.</span>
+                            </div>
+                            <select id="deviceBox" hidden onchange="resetMap()"></select>
+                        </div>
+
+                        <div>
+                            <h5 class="field__label">Time frame</h5>
+                            <div class="range" id="rangeSeg">
+                                <button type="button" class="range__btn is-active" data-range="all" onclick="loadAllTimeData()">All time</button>
+                                <button type="button" class="range__btn" data-range="month" onclick="changeDateRange('month')">Month</button>
+                                <button type="button" class="range__btn" data-range="week" onclick="changeDateRange('week')">Week</button>
+                                <button type="button" class="range__btn" data-range="48hrs" onclick="changeDateRange('48hrs')">48h</button>
+                                <button type="button" class="range__btn" data-range="24hrs" onclick="changeDateRange('24hrs')">24h</button>
+                            </div>
+                            <div class="dates">
+                                <input type="hidden" id="startBox" name="trip-start" value="" data-datepicker data-datepicker-align="left" />
+                                <span class="dates__to">to</span>
+                                <input type="hidden" id="endBox" name="trip-end" value="" data-datepicker data-datepicker-align="right" />
+                            </div>
+                            <p class="field__hint field__hint--after">Times shown in your local timezone.</p>
+                        </div>
+                    </div>
+
+                    <div class="cfg__pane" id="cfgPaneMap" hidden>
+                        <div>
+                            <h5 class="field__label field__label--tight">View mode</h5>
+                            <p class="field__hint">Routes draws your travelled paths with a coverage buffer. Heatmap shades how often you've been somewhere.</p>
+                            <div class="pair" id="modePair">
+                                <button type="button" class="pair__btn" data-mode="routes" onclick="setMapMode('routes')">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
+                                    Routes
+                                </button>
+                                <button type="button" class="pair__btn" data-mode="heatmap" onclick="setMapMode('heatmap')">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                                    Heatmap
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="callout">
+                            <div>
+                                <h5 class="callout__title">Plane flights</h5>
+                                <p class="callout__text">Segments faster than 200&nbsp;mph aren't roads, so they're kept out of driven roads and out of your distance and area totals.</p>
+                            </div>
+                            <div class="segsm" id="flightsSeg">
+                                <button type="button" class="segsm__btn" data-flights="off" onclick="setFlights(false)">Hidden</button>
+                                <button type="button" class="segsm__btn" data-flights="on" onclick="setFlights(true)">Shown</button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h5 class="field__label field__label--tight">Buffer size</h5>
+                            <p class="field__hint">How wide the explored area around each road is drawn. Larger values take longer and clear your cache.</p>
+                            <div class="stepper-row">
+                                <div class="stepper">
+                                    <button type="button" class="stepper__btn" onclick="stepBuffer(-1)" aria-label="Smaller buffer">−</button>
+                                    <span class="stepper__value" id="bufferValue">0.31 mi</span>
+                                    <button type="button" class="stepper__btn" onclick="stepBuffer(1)" aria-label="Larger buffer">+</button>
+                                </div>
+                                <span class="field__meta" id="bufferHint"></span>
+                            </div>
+                            <input type="hidden" id="circleSize" value="0.5" />
+                        </div>
+
+                        <div class="callout callout--plain" id="routeLineRow">
+                            <div>
+                                <h5 class="callout__title">Route line</h5>
+                                <p class="callout__text">Hide the thin red path and keep only the coverage area.</p>
+                            </div>
+                            <button type="button" class="btn btn--danger-outline" onclick="eraseRoute()">Hide route</button>
+                        </div>
+                    </div>
+
+                    <div class="cfg__pane" id="cfgPaneCache" hidden>
+                        <p class="field__hint" style="margin:0">Processed shapes are stored in your browser so return visits only process new GPS data.</p>
+                        <div class="cards">
+                            <div class="card">
+                                <div class="card__label">Cached range</div>
+                                <div class="card__value" id="cacheDateRange">No cached data</div>
+                            </div>
+                            <div class="card">
+                                <div class="card__label">Storage</div>
+                                <div class="card__value" id="cacheSize">0 Bytes</div>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn--warning-outline btn--start" onclick="clearCurrentCache()">Clear cache</button>
+                    </div>
+
+                    <div class="cfg__pane" id="cfgPaneAccount" hidden>
+                        <div>
+                            <h5 class="callout__title" style="margin-bottom:4px">OwnTracks setup</h5>
+                            <p class="field__hint">Point the OwnTracks app at this server to start recording.</p>
+                            <button type="button" class="btn btn--primary" onclick="showSetupGuideFromSettings()">Open setup guide</button>
+                        </div>
+                        <div class="divider"></div>
+                        <div class="stack">
+                            <a class="link-btn" href="/sign_out">Sign out</a>
+                            <button type="button" class="link-btn link-btn--danger" onclick="showDeleteConfirm()">Delete account and all data</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="cfg__foot">
+                    <span class="cfg__note">Changes apply to the map immediately.</span>
+                    <button type="button" class="btn btn--primary" onclick="closeConfig()">Done</button>
+                </div>
+            </section>
+
+            <div class="legend" id="legend">
+                <div class="legend__row legend__row--routes">
+                    <span class="legend__swatch legend__swatch--area"></span>
+                    <span>Explored area</span>
+                </div>
+                <div class="legend__row legend__row--routes" id="legendRoad" hidden>
+                    <span class="legend__swatch legend__swatch--road"></span>
+                    <span>Driven road</span>
+                </div>
+                <div class="legend__row legend__row--routes">
+                    <span class="legend__swatch legend__swatch--flight"></span>
+                    <span id="legendFlight">Flight (hidden)</span>
+                </div>
+                <div class="legend__row legend__row--heat">
+                    <span class="legend__swatch legend__swatch--heat"></span>
+                    <span>Fewer → more visits</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Log in -->
+        <div class="dialog" id="myForm" style="display: {% if login_error %}block{% else %}none{% endif %};">
+            <div class="dialog__head"><h3>Log in</h3></div>
+            <form class="dialog__body" action="/login" method="POST">
+                <input class="input" type="text" placeholder="Username" name="username" autocomplete="username" />
                 <div class="password-input-wrapper">
-                    <input type='password' placeholder='Password' name='password' autocomplete="on" />
+                    <input class="input" type="password" placeholder="Password" name="password" autocomplete="current-password" />
                     <button type="button" class="password-toggle" onclick="togglePasswordVisibility(this)" aria-label="Show password">
                         <svg class="eye-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                         <svg class="eye-off-icon" style="display:none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
@@ -24,202 +218,103 @@
                 {% if login_error %}
                 <p class="form-message form-message-error">{{ login_error }}</p>
                 {% endif %}
-                <input class="btn btn-success" type='submit' value='Log In' />
+                <button class="btn btn--primary btn--block" type="submit">Log in</button>
+                <button type="button" class="link-btn link-btn--center" onclick="showRegisterForm()">Create an account</button>
             </form>
-            <a href="#" class="form-link" onclick="showRegisterForm(); return false;">Create Account</a>
         </div>
-    </div>
 
-    <div class="form-popup" id="registerForm" style="display: none;">
-        <h3>Create Account</h3>
-        <div class="form-container">
-            <input type='text' placeholder='Username' id='regUsername' autocomplete="on" />
-            <div class="password-input-wrapper">
-                <input type='password' placeholder='Password' id='regPassword' autocomplete="new-password" />
-                <button type="button" class="password-toggle" onclick="togglePasswordVisibility(this)" aria-label="Show password">
-                    <svg class="eye-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                    <svg class="eye-off-icon" style="display:none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
-                </button>
-            </div>
-            <div class="password-input-wrapper">
-                <input type='password' placeholder='Confirm Password' id='regPasswordConfirm' autocomplete="new-password" />
-                <button type="button" class="password-toggle" onclick="togglePasswordVisibility(this)" aria-label="Show password">
-                    <svg class="eye-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                    <svg class="eye-off-icon" style="display:none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
-                </button>
-            </div>
-            <p class="form-message" style="color: var(--color-text-muted); margin-bottom: 4px;">
-                Password must be at least 12 characters with uppercase, lowercase, and a number.
-            </p>
-            <p id="registerMessage" class="form-message"></p>
-            <button class="btn btn-success" onclick="submitRegistration()" style="width:100%">Create Account</button>
-            <a href="#" class="form-link" onclick="showLoginForm(); return false;">Back to Log In</a>
-        </div>
-    </div>
-
-    <div id="deleteConfirmBackdrop" class="delete-confirm-backdrop" style="display: none;" onclick="hideDeleteConfirm()"></div>
-    <div class="form-popup" id="deleteConfirmForm" style="display: none;">
-        <h3>Delete Account</h3>
-        <div class="form-container">
-            <p class="delete-warning">This will permanently delete your account and all your location data. This action cannot be undone.</p>
-            <div class="password-input-wrapper">
-                <input type='password' placeholder='Enter your password to confirm' id='deletePassword' autocomplete="current-password" />
-                <button type="button" class="password-toggle" onclick="togglePasswordVisibility(this)" aria-label="Show password">
-                    <svg class="eye-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                    <svg class="eye-off-icon" style="display:none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
-                </button>
-            </div>
-            <p id="deleteMessage" class="form-message"></p>
-            <button class="btn btn-danger" onclick="submitDeleteAccount()" style="width:100%">Permanently Delete My Account</button>
-            <a href="#" class="form-link" onclick="hideDeleteConfirm(); return false;">Cancel</a>
-        </div>
-    </div>
-
-    <!-- Setup Guide Modal -->
-    <div id="setupGuideBackdrop" class="delete-confirm-backdrop" style="display: none;" onclick="hideSetupGuide()"></div>
-    <div class="form-popup" id="setupGuideModal" style="display: none;">
-        <h3>Set Up OwnTracks</h3>
-        <div class="form-container setup-guide-container">
-            <div class="setup-guide-content">
-                <p class="setup-step"><strong>1.</strong> Download <a href="https://apps.apple.com/app/owntracks/id692424691" target="_blank">OwnTracks for iOS</a> or <a href="https://play.google.com/store/apps/details?id=org.owntracks.android" target="_blank">OwnTracks for Android</a></p>
-                <p class="setup-step"><strong>2.</strong> Open the app and tap the <strong>(i)</strong> button in the top left</p>
-                <p class="setup-step"><strong>3.</strong> Tap <strong>Settings</strong></p>
-                <p class="setup-step"><strong>4.</strong> Change the mode from MQTT to <strong>HTTP</strong></p>
-                <p class="setup-step"><strong>5.</strong> Set <strong>UserID</strong> to your username</p>
-                <p class="setup-step"><strong>6.</strong> Set <strong>Password</strong> to your password</p>
-                <p class="setup-step"><strong>7.</strong> Set <strong>DeviceID</strong> to something memorable (e.g., "phone")</p>
-                <p class="setup-step"><strong>8.</strong> Set the <strong>URL</strong> to:<br><code>https://mini.romangarms.com/pub</code></p>
-            </div>
-            <button class="btn btn-success" onclick="hideSetupGuide()" style="width:100%">Got it!</button>
-        </div>
-    </div>
-
-    <div id="map"></div>
-
-    <!-- Map controls (icon column; labels reveal on hover on desktop) -->
-    <div id="mapControls">
-        <button type="button" class="mapControlBtn mode-routes" id="mapModeBtn" onclick="toggleMapMode()">
-            <span class="mapControlLabel" id="mapModeLabel">Routes</span>
-            <span class="mapControlIcon">
-                <svg class="icon-routes" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polygon points="3 11 22 2 13 21 11 13 3 11"></polygon>
-                </svg>
-                <svg class="icon-heatmap" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="3" width="7" height="7"></rect>
-                    <rect x="14" y="3" width="7" height="7"></rect>
-                    <rect x="14" y="14" width="7" height="7"></rect>
-                    <rect x="3" y="14" width="7" height="7"></rect>
-                </svg>
-            </span>
-        </button>
-        <button type="button" class="mapControlBtn mapControlBtn--accent" onclick="showSetupGuide()" title="OwnTracks setup guide">
-            <span class="mapControlLabel">Setup Guide</span>
-            <span class="mapControlIcon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
-                    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
-                </svg>
-            </span>
-        </button>
-        <button type="button" class="mapControlBtn" onclick="openSettingsPanel()" title="More settings">
-            <span class="mapControlLabel">More</span>
-            <span class="mapControlIcon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="3"></circle>
-                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                </svg>
-            </span>
-        </button>
-    </div>
-
-    <!-- Settings Panel Backdrop -->
-    <div id="settingsPanelBackdrop" onclick="closeSettingsPanel()"></div>
-
-    <!-- Settings Slide-in Panel -->
-    <div id="settingsPanel">
-        <div class="settingsPanelHeader">
-            <h1>Settings</h1>
-            <button id="settingsPanelClose" onclick="closeSettingsPanel()">&times;</button>
-        </div>
-        <div class="settingsPanelBody">
-            <nav class="settingsPanelNav">
-                <button class="btn btn-primary settings-nav-apply" id="applySettingsButton" onclick="resetMap(map)">Apply</button>
-                <button class="settings-nav-btn active" onclick="scrollToSetting('settingsMap')">Map</button>
-                <button class="settings-nav-btn" onclick="scrollToSetting('settingsCache')">Cache</button>
-                <button class="settings-nav-btn" onclick="scrollToSetting('settingsAccount')">Account</button>
-            </nav>
-            <div class="settingsPanelContent">
-                <div class="subPanel" id="settingsMap">
-                    <h4>Map Settings</h4>
-                    <p class="settingInfo">Adjust settings about the way the routes and blue area buffer are drawn on the
-                        map.</p>
-                    <h5>View Mode <span class="info-icon">i
-                            <span class="tooltip-text">Switch between Routes (your travelled paths with a blue area
-                                buffer) and Heatmap (visitor frequency by location).</span>
-                        </span></h5>
-                    <p class="settingInfo">Choose how your location history is displayed.</p>
-                    <div class="btn-group" role="group" id="mapModeToggle">
-                        <input type="button" class="btn btn-secondary" value="Routes" onclick="setMapMode('routes')" />
-                        <input type="button" class="btn btn-secondary" value="Heatmap" onclick="setMapMode('heatmap')" />
-                    </div>
-
-                    <h5>Hide Route <span class="info-icon">i
-                            <span class="tooltip-text">The route is only drawn when less than 500 GPS
-                                points are used. Adjust the date filters to see this!</span>
-                        </span></h5>
-                    <input type="button" class="btn btn-danger" value="Remove Route" onclick="eraseRoute(map)" />
-
-                    <h5>Buffer Size <span class="info-icon">i
-                            <span class="tooltip-text">Change how large of a buffer is drawn around your route in
-                                kilometers.
-                                Note that larger values take longer to draw. Changing this will invalidate your cache.</span>
-                        </span></h5>
-
-                    <p class="settingInfo">Default: 0.5km</p>
-                    <input type="number" class="form-control form-control-lg" id="circleSize" value="0.5" step="0.1"
-                        min="0.1" max="10" />
+        <!-- Create account -->
+        <div class="dialog" id="registerForm" style="display: none;">
+            <div class="dialog__head"><h3>Create account</h3></div>
+            <div class="dialog__body">
+                <input class="input" type="text" placeholder="Username" id="regUsername" autocomplete="username" />
+                <div class="password-input-wrapper">
+                    <input class="input" type="password" placeholder="Password" id="regPassword" autocomplete="new-password" />
+                    <button type="button" class="password-toggle" onclick="togglePasswordVisibility(this)" aria-label="Show password">
+                        <svg class="eye-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                        <svg class="eye-off-icon" style="display:none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                    </button>
                 </div>
-
-                <div class="subPanel" id="settingsCache" style="display: none;">
-                    <h4>Cache <span class="info-icon">i
-                            <span class="tooltip-text">Cached buffer polygons speed up loading on return visits. Only new GPS data since your last visit needs to be processed.</span>
-                        </span></h4>
-                    <p class="settingInfo">
-                        <strong>Cached:</strong> <span id="cacheDateRange">No cached data</span><br>
-                        <strong>Storage:</strong> <span id="cacheSize">0 Bytes</span>
-                    </p>
-                    <input type="button" class="btn btn-warning" value="Clear Cache" onclick="clearCurrentCache()" />
+                <div class="password-input-wrapper">
+                    <input class="input" type="password" placeholder="Confirm password" id="regPasswordConfirm" autocomplete="new-password" />
+                    <button type="button" class="password-toggle" onclick="togglePasswordVisibility(this)" aria-label="Show password">
+                        <svg class="eye-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                        <svg class="eye-off-icon" style="display:none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                    </button>
                 </div>
+                <p class="form-message">Password must be at least 12 characters with uppercase, lowercase, and a number.</p>
+                <p id="registerMessage" class="form-message"></p>
+                <button type="button" class="btn btn--primary btn--block" onclick="submitRegistration()">Create account</button>
+                <button type="button" class="link-btn link-btn--center" onclick="showLoginForm()">Back to log in</button>
+            </div>
+        </div>
 
-                <div class="subPanel" id="settingsAccount">
-                    <h4>Account</h4>
-                    <p class="settingInfo">Need help connecting OwnTracks to your account?</p>
-                    <input type="button" class="btn btn-primary" value="OwnTracks Setup Guide" onclick="showSetupGuideFromSettings()" />
-                    <p class="settingInfo" style="margin-top: var(--spacing-md);">Permanently delete your account and all associated data. This cannot be undone.</p>
-                    <input type="button" class="btn btn-danger" value="Delete Account" onclick="showDeleteConfirm()" />
+        <!-- Delete account -->
+        <div id="deleteConfirmBackdrop" class="modal-backdrop" style="display: none;" onclick="hideDeleteConfirm()"></div>
+        <div class="dialog" id="deleteConfirmForm" style="display: none;">
+            <div class="dialog__head"><h3>Delete account</h3></div>
+            <div class="dialog__body">
+                <p class="form-message form-message-error" style="min-height:0">This permanently deletes your account and all of your location data. It cannot be undone.</p>
+                <div class="password-input-wrapper">
+                    <input class="input" type="password" placeholder="Enter your password to confirm" id="deletePassword" autocomplete="current-password" />
+                    <button type="button" class="password-toggle" onclick="togglePasswordVisibility(this)" aria-label="Show password">
+                        <svg class="eye-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                        <svg class="eye-off-icon" style="display:none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                    </button>
                 </div>
+                <p id="deleteMessage" class="form-message"></p>
+                <button type="button" class="btn btn--danger btn--block" onclick="submitDeleteAccount()">Permanently delete my account</button>
+                <button type="button" class="link-btn link-btn--center" onclick="hideDeleteConfirm()">Cancel</button>
+            </div>
+        </div>
+
+        <!-- OwnTracks setup guide -->
+        <div id="setupGuideBackdrop" class="modal-backdrop" style="display: none;" onclick="hideSetupGuide()"></div>
+        <div class="dialog dialog--wide" id="setupGuideModal" style="display: none;">
+            <div class="dialog__head"><h3>Set up OwnTracks</h3></div>
+            <div class="dialog__body">
+                <ol class="setup-steps">
+                    <li>Download <a href="https://apps.apple.com/app/owntracks/id692424691" target="_blank" rel="noopener">OwnTracks for iOS</a> or <a href="https://play.google.com/store/apps/details?id=org.owntracks.android" target="_blank" rel="noopener">OwnTracks for Android</a></li>
+                    <li>Open the app and tap the <strong>(i)</strong> button in the top left</li>
+                    <li>Tap <strong>Settings</strong></li>
+                    <li>Change the mode from MQTT to <strong>HTTP</strong></li>
+                    <li>Set <strong>UserID</strong> to your username</li>
+                    <li>Set <strong>Password</strong> to your password</li>
+                    <li>Set <strong>DeviceID</strong> to something memorable (e.g. "phone")</li>
+                    <li>Set the <strong>URL</strong> to <code>https://mini.romangarms.com/pub</code></li>
+                </ol>
+                <button type="button" class="btn btn--primary btn--block" onclick="hideSetupGuide()">Got it</button>
             </div>
         </div>
     </div>
 
-    <div id="map-shadow"></div>
-
-    <div id="progressBar">
-        <div id="progressBarInner"></div>
-        <span id="progressBarMessage"></span>
+    <div class="strip" id="progressBar">
+        <div class="strip__fill" id="progressBarInner"></div>
+        <div class="strip__inner">
+            <span class="strip__msg"><span class="strip__dot"></span><span id="progressBarMessage"></span></span>
+            <span class="strip__pct" id="progressBarPercent"></span>
+        </div>
     </div>
-</div>
+
+    <div class="ribbon" id="statsRibbon">
+        <div class="ribbon__head">
+            <span class="ribbon__scope" id="ribbonScope">All time</span>
+            <button type="button" class="btn btn--sm" onclick="reloadData()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9 9 0 0 1 6.7 3H21"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-9 9 9 9 0 0 1-6.7-3H3"></path><path d="M3 21v-5h5"></path></svg>
+                Reload
+            </button>
+        </div>
+        <div class="ribbon__row" id="statsPanel"></div>
+    </div>
+</main>
+
 <script>
-    //debuggingTest();
+    renderStatPanels(document.getElementById("statsPanel"));
 
-    var latlngs;
-    // Initialize the map
-    var map = L.map('map').setView([37.7749, -122.4194], 13);
-
-    // Add a tile layer
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    }).addTo(map);
+    var map = L.map('map', { zoomControl: false }).setView([37.7749, -122.4194], 13);
+    L.control.zoom({ position: 'bottomleft' }).addTo(map);
+    map.attributionControl.setPrefix(false);
+    addBaseLayer();
 
     // Track if we're using cached data for this load
     let usingCache = false;
@@ -228,98 +323,308 @@
     let customTimeFilterApplied = false;
 
     /**
-     * Check if the current query is an "all time" query (eligible for caching)
      * Caching only optimizes all-time queries, not custom date ranges
      */
     function isAllTimeQuery() {
-        // If user explicitly applied a time filter, it's not an all-time query
-        if (customTimeFilterApplied) {
-            return false;
-        }
-
-        // Otherwise, the dates were set automatically from data/cache (all-time)
-        return true;
+        return !customTimeFilterApplied;
     }
 
-    /**
-     * Mark that user has applied a custom time filter
-     */
     function setCustomTimeFilter() {
         customTimeFilterApplied = true;
     }
 
-    /**
-     * Reset the custom time filter flag and reload all-time data
-     */
     function loadAllTimeData() {
         customTimeFilterApplied = false;
         firstLoad = true; // Reset so dates get auto-populated from data/cache
+        activeTimeframe = 'all';
+        syncTimeframeUI();
         resetMap();
     }
 
-    /**
-     * Get current settings for cache validation
-     */
+    function reloadData() {
+        resetMap();
+    }
+
     function getCurrentSettings() {
         return {
-            bufferSize: parseFloat(document.getElementById('circleSize').value) || 0.5
+            bufferSize: parseFloat(document.getElementById('circleSize').value) || 0.5,
+            schema: CACHE_SCHEMA_VERSION
         };
     }
 
-    /**
-     * View mode: 'routes' (buffers) or 'heatmap' (visitor frequency).
-     * Persisted client-side as a UI preference.
-     */
+    // ---- View mode ---------------------------------------------------------
+
     function getMapMode() {
         return localStorage.getItem('whib_mapMode') || 'routes';
     }
 
     function setMapMode(mode) {
+        if (mode === getMapMode()) {
+            syncMapModeUI();
+            return;
+        }
         localStorage.setItem('whib_mapMode', mode);
         syncMapModeUI();
         resetMap();
     }
 
-    /**
-     * Flip between the two view modes from the map-control toggle button.
-     */
     function toggleMapMode() {
         setMapMode(getMapMode() === 'routes' ? 'heatmap' : 'routes');
     }
 
-    /**
-     * Reflect the stored view mode on the map-control toggle button
-     * (icon + label show the currently active mode).
-     */
     function syncMapModeUI() {
         const mode = getMapMode();
-        const btn = document.getElementById('mapModeBtn');
-        const label = document.getElementById('mapModeLabel');
-        if (!btn) return;
+        const isHeat = mode === 'heatmap';
+        document.body.classList.toggle('mode-heatmap', isHeat);
 
-        btn.classList.toggle('mode-heatmap', mode === 'heatmap');
-        btn.classList.toggle('mode-routes', mode === 'routes');
-        if (label) label.textContent = mode === 'heatmap' ? 'Heatmap' : 'Routes';
-        btn.title = mode === 'heatmap'
-            ? 'View mode: Heatmap (tap to switch to Routes)'
-            : 'View mode: Routes (tap to switch to Heatmap)';
+        document.querySelectorAll('#modeSeg [data-mode], #modePair [data-mode]').forEach(btn => {
+            btn.classList.toggle('is-active', btn.dataset.mode === mode);
+        });
 
-        // Reflect the active mode on the settings-panel toggle buttons
-        const toggle = document.getElementById('mapModeToggle');
-        if (toggle) {
-            toggle.querySelectorAll('input').forEach(b => {
-                const isActive = b.value.toLowerCase() === mode;
-                b.classList.toggle('btn-primary', isActive);
-                b.classList.toggle('btn-secondary', !isActive);
-            });
+        const chip = document.getElementById('modeChip');
+        if (chip) {
+            chip.querySelector('.icon-routes').hidden = isHeat;
+            chip.querySelector('.icon-heatmap').hidden = !isHeat;
+            document.getElementById('modeChipLabel').textContent = isHeat ? 'Heatmap' : 'Routes';
         }
     }
+
+    // ---- Flights -----------------------------------------------------------
+
+    function getFlightsShown() {
+        return localStorage.getItem('whib_flights') === 'shown';
+    }
+
+    function setFlights(shown) {
+        localStorage.setItem('whib_flights', shown ? 'shown' : 'hidden');
+        syncFlightsUI();
+        setFlightLayersVisible(shown);
+        refreshStats();
+    }
+
+    function toggleFlights() {
+        setFlights(!getFlightsShown());
+    }
+
+    function syncFlightsUI() {
+        const shown = getFlightsShown();
+        const chip = document.getElementById('flightsChip');
+        chip.classList.toggle('is-active', shown);
+        document.getElementById('flightsChipLabel').textContent = shown ? 'Flights shown' : 'Flights hidden';
+        document.getElementById('legendFlight').textContent = shown ? 'Flight' : 'Flight (hidden)';
+        document.querySelectorAll('#flightsSeg [data-flights]').forEach(btn => {
+            btn.classList.toggle('is-active', (btn.dataset.flights === 'on') === shown);
+        });
+    }
+
+    function syncLegend() {
+        document.getElementById('legendRoad').hidden = !hasRouteLines();
+    }
+
+    // ---- Configure popover -------------------------------------------------
+
+    function isConfigOpen() {
+        return !document.getElementById('cfg').hidden;
+    }
+
+    function openConfig() {
+        const cfg = document.getElementById('cfg');
+        const chip = document.getElementById('configChip');
+        const chips = document.getElementById('chips');
+        cfg.style.setProperty('--cfg-left', (chips.offsetLeft + chip.offsetLeft) + 'px');
+        cfg.hidden = false;
+        document.getElementById('cfgBackdrop').classList.add('is-open');
+        chip.classList.add('is-active');
+        chip.setAttribute('aria-expanded', 'true');
+    }
+
+    function closeConfig() {
+        const chip = document.getElementById('configChip');
+        document.getElementById('cfg').hidden = true;
+        document.getElementById('cfgBackdrop').classList.remove('is-open');
+        chip.classList.remove('is-active');
+        chip.setAttribute('aria-expanded', 'false');
+    }
+
+    function toggleConfig() {
+        isConfigOpen() ? closeConfig() : openConfig();
+    }
+
+    function showConfigTab(tab) {
+        document.querySelectorAll('.cfg__tab').forEach(btn => {
+            btn.classList.toggle('is-active', btn.dataset.tab === tab);
+        });
+        ['Data', 'Map', 'Cache', 'Account'].forEach(name => {
+            document.getElementById('cfgPane' + name).hidden = name.toLowerCase() !== tab;
+        });
+    }
+
+    document.addEventListener('click', function (event) {
+        if (!isConfigOpen()) return;
+        const cfg = document.getElementById('cfg');
+        const chip = document.getElementById('configChip');
+        // composedPath is captured at dispatch, so it still holds the ancestors
+        // of a calendar day cell that the date picker re-rendered mid-click.
+        const inside = event.composedPath().some(el =>
+            el === cfg || el === chip ||
+            (el.classList && el.classList.contains('whib-datepicker__popover')));
+        if (!inside) closeConfig();
+    });
+
+    // ---- Devices -----------------------------------------------------------
+
+    const DEVICE_STORAGE_KEY = 'whib_device';
+
+    function deviceIcon(name) {
+        if (/laptop|mac|pc|desktop|book/i.test(name)) {
+            return '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"></rect><line x1="7" y1="20" x2="17" y2="20"></line></svg>';
+        }
+        return '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"></rect><line x1="12" y1="18" x2="12" y2="18"></line></svg>';
+    }
+
+    function restoreDeviceSelection() {
+        const select = document.getElementById('deviceBox');
+        const saved = localStorage.getItem(DEVICE_STORAGE_KEY);
+        if (saved && Array.from(select.options).some(o => o.value === saved)) {
+            select.value = saved;
+        }
+        if (select.value) localStorage.setItem(DEVICE_STORAGE_KEY, select.value);
+    }
+
+    function renderDeviceChips() {
+        const select = document.getElementById('deviceBox');
+        const container = document.getElementById('deviceChips');
+        const options = Array.from(select.options);
+        container.innerHTML = '';
+        document.getElementById('deviceCount').textContent = options.length + ' reporting';
+
+        if (options.length === 0) {
+            const empty = document.createElement('span');
+            empty.className = 'field__meta';
+            empty.textContent = 'No devices have reported yet.';
+            container.appendChild(empty);
+            return;
+        }
+
+        options.forEach(option => {
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'device-chip' + (option.value === select.value ? ' is-active' : '');
+            chip.innerHTML = deviceIcon(option.value);
+            chip.append(option.value);
+            chip.addEventListener('click', () => selectDevice(option.value));
+            container.appendChild(chip);
+        });
+    }
+
+    function selectDevice(device) {
+        const select = document.getElementById('deviceBox');
+        if (select.value === device) return;
+        select.value = device;
+        localStorage.setItem(DEVICE_STORAGE_KEY, device);
+        renderDeviceChips();
+        syncConfigChip();
+        resetMap();
+    }
+
+    // ---- Time frame --------------------------------------------------------
+
+    const TIMEFRAME_LABELS = {
+        all: 'All time',
+        month: 'Last month',
+        week: 'Last week',
+        '48hrs': 'Last 48h',
+        '24hrs': 'Last 24h',
+        custom: 'Custom range'
+    };
+
+    function syncTimeframeUI() {
+        document.querySelectorAll('#rangeSeg [data-range]').forEach(btn => {
+            btn.classList.toggle('is-active', btn.dataset.range === activeTimeframe);
+        });
+        syncConfigChip();
+    }
+
+    function syncConfigChip() {
+        const device = document.getElementById('deviceBox').value || 'No device';
+        const range = TIMEFRAME_LABELS[activeTimeframe] || TIMEFRAME_LABELS.custom;
+        document.getElementById('configRange').textContent = range;
+        document.getElementById('ribbonScope').textContent = range + ' · ' + device;
+    }
+
+    function onDateRangeEdited() {
+        setCustomTimeFilter();
+        activeTimeframe = 'custom';
+        syncTimeframeUI();
+        resetMap();
+    }
+
+    ['startBox', 'endBox'].forEach(id => {
+        document.getElementById(id).addEventListener('change', onDateRangeEdited);
+    });
+
+    // ---- Buffer size -------------------------------------------------------
+
+    const BUFFER_STEP_MI = 0.1;
+    const BUFFER_MIN_MI = 0.1;
+    const BUFFER_MAX_MI = 6;
+    let bufferApplyTimer = null;
+
+    function getBufferKm() {
+        return parseFloat(document.getElementById('circleSize').value) || 0.5;
+    }
+
+    function formatMiles(mi) {
+        return mi.toFixed(2).replace(/\.?0+$/, '');
+    }
+
+    function syncBufferStepper() {
+        const km = getBufferKm();
+        document.getElementById('bufferValue').textContent = formatMiles(km / KM_PER_MI) + ' mi';
+        document.getElementById('bufferHint').textContent = '≈ ' + formatMiles(km) + ' km · default 0.31 mi';
+    }
+
+    function stepBuffer(direction) {
+        const currentMi = getBufferKm() / KM_PER_MI;
+        let nextMi = Math.round((currentMi + direction * BUFFER_STEP_MI) / BUFFER_STEP_MI) * BUFFER_STEP_MI;
+        nextMi = Math.min(BUFFER_MAX_MI, Math.max(BUFFER_MIN_MI, nextMi));
+        const nextKm = Math.round(nextMi * KM_PER_MI * 1000) / 1000;
+        if (nextKm === getBufferKm()) return;
+
+        document.getElementById('circleSize').value = nextKm;
+        syncBufferStepper();
+
+        // Debounce so tapping +/- several times triggers one recompute
+        clearTimeout(bufferApplyTimer);
+        bufferApplyTimer = setTimeout(applyBufferSize, 700);
+    }
+
+    function applyBufferSize() {
+        fetch('/save_settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ circleSize: getBufferKm() })
+        }).catch(error => console.error('Error saving settings:', error));
+        resetMap();
+    }
+
+    // ---- Keyboard ----------------------------------------------------------
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key !== 'Escape') return;
+        const setupGuide = document.getElementById('setupGuideModal');
+        if (setupGuide.style.display !== 'none') { hideSetupGuide(); return; }
+        const deleteForm = document.getElementById('deleteConfirmForm');
+        if (deleteForm.style.display !== 'none') { hideDeleteConfirm(); return; }
+        if (isConfigOpen()) closeConfig();
+    });
+
+    // ---- Data pipeline -----------------------------------------------------
 
     async function runTasks() {
         const user = getCurrentUsername();
         const device = document.getElementById('deviceBox').value;
 
-        // Initialize IndexedDB
         try {
             await initDB();
         } catch (err) {
@@ -332,7 +637,6 @@
             return runHeatmap(user, device);
         }
 
-        // Check for valid cache
         let cacheData = null;
         let cacheValid = false;
         const currentSettings = getCurrentSettings();
@@ -341,13 +645,11 @@
             try {
                 cacheData = await getCache(user, device);
                 if (cacheData) {
-                    // Validate cache data structure first
                     if (!validateCacheData(cacheData)) {
                         console.log("Cache data corrupted, clearing and recalculating");
                         await clearCache(user, device);
                         cacheData = null;
                     } else {
-                        // Then validate settings match
                         cacheValid = validateCacheSettings(
                             cacheData.settings,
                             currentSettings.bufferSize
@@ -379,14 +681,12 @@
         usingCache = true;
         console.log("Using cached data, fetching only new data");
 
-        // Determine the latest timestamp from cache
         const cacheTimestamp = cacheData.driving?.timestamp || cacheData.flying?.timestamp;
         if (!cacheTimestamp) {
             console.log("No valid timestamp in cache, falling back to fresh load");
             return runTasksFresh(user, device, currentSettings);
         }
 
-        // Update date inputs from cache data so they show actual data range
         if (firstLoad) {
             const startTimestamp = cacheData.driving?.startTimestamp || cacheData.flying?.startTimestamp;
             if (startTimestamp) {
@@ -396,10 +696,8 @@
             firstLoad = false;
         }
 
-        // Set initial progress bar steps (fewer for cached load)
         setProgressBarNumSteps(5);
 
-        // Check if logged in
         const loggedIn = await checkIfLoggedIn();
 
         if (!loggedIn) {
@@ -412,7 +710,6 @@
         completeTask("loading from cache", 0);
         updateProgressBar();
 
-        // Immediately render cached buffers with corruption handling
         try {
             if (cacheData.driving?.buffer) {
                 renderCachedBuffer(cacheData.driving.buffer, "blue");
@@ -420,15 +717,15 @@
             }
             if (cacheData.flying?.buffer) {
                 renderCachedBuffer(cacheData.flying.buffer, "red");
+                renderCachedFlightLines(cacheData.flying.lines);
+                recordFlightBuffer(cacheData.flying.buffer);
             }
-            // Restore cached metrics
             if (cacheData.metrics) {
                 setCachedMetrics(cacheData.metrics);
             }
         } catch (err) {
             console.error("Cache corruption detected, falling back to fresh load:", err);
             setProgressMessage("Cache error - recalculating...");
-            // Clear corrupted cache
             try {
                 await clearCache(user, device);
             } catch (clearErr) {
@@ -437,7 +734,6 @@
             return runTasksFresh(user, device, currentSettings);
         }
 
-        // Fetch only new data since cache timestamp
         // Add 1 second to avoid duplicate of last point
         const cacheDate = new Date(cacheTimestamp);
         cacheDate.setSeconds(cacheDate.getSeconds() + 1);
@@ -449,16 +745,14 @@
             taskName: "fetching new data"
         });
 
-        // Check if there's new data to process
         if (!newData || newData.isEmpty || !newData.features || newData.features.length === 0) {
             console.log("No new data since cache, using cached buffers only");
-            setProgressMessage("Complete - loaded from cache");
             completeTask("no new data", 0);
+            finishProgressBar("Complete - loaded from cache");
             updateCacheStatusUI(cacheData, user, device);
             return;
         }
 
-        // Filter and process new data
         setProgressMessage("Processing new data...");
         const { drivingLatlngs, flyingLatlngs } = await filterData(newData);
         updateProgressBar();
@@ -469,7 +763,7 @@
             flyingLatlngs.some(seg => seg.length > 1);
         if (!hasRoutableSegments) {
             let pointBuffer = null;
-            const circleSize = parseFloat(document.getElementById('circleSize').value) || 0.5;
+            const circleSize = getBufferKm();
 
             for (const feature of newData.features) {
                 if (feature.geometry?.coordinates) {
@@ -486,16 +780,18 @@
             }
 
             if (pointBuffer) {
-                // Merge with cached driving buffer
                 let mergedBuffer = cacheData.driving?.buffer
                     ? mergeBuffers(cacheData.driving.buffer, pointBuffer)
                     : pointBuffer;
                 eraseLayers();
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                }).addTo(map);
+                addBaseLayer();
                 renderCachedBuffer(mergedBuffer, "blue");
-                if (cacheData.flying?.buffer) renderCachedBuffer(cacheData.flying.buffer, "red");
+                if (cacheData.flying?.buffer) {
+                    renderCachedBuffer(cacheData.flying.buffer, "red");
+                    renderCachedFlightLines(cacheData.flying.lines);
+                    recordFlightBuffer(cacheData.flying.buffer);
+                }
+                resetCoverageStats();
                 getBufferStats(mergedBuffer);
                 getOwntracksStatsIncremental(newData);
 
@@ -504,25 +800,20 @@
                     driving: { buffer: mergedBuffer, timestamp: latestTimestamp || cacheData.driving?.timestamp, startTimestamp: cacheData.driving?.startTimestamp },
                     flying: cacheData.flying || { buffer: null, timestamp: latestTimestamp, startTimestamp: cacheData.driving?.startTimestamp },
                     settings: currentSettings,
-                    metrics: { highestAltitude, highestVelocity, totalDistance: distanceKm }
+                    metrics: currentMetrics()
                 };
                 try { await setCache(user, device, newCacheData); } catch (e) { console.error("Cache update error:", e); }
                 updateCacheStatusUI(newCacheData, user, device);
             } else {
-                // No valid new points, just keep showing cache
                 getOwntracksStatsIncremental(newData);
             }
 
-            setProgressBarNumSteps(getNumTasksDone());
-            setProgressMessage("Complete");
-            updateProgressBar();
+            finishProgressBar("Complete");
             return;
         }
 
-        // Get stats for new data (incremental - adds to cached metrics)
         getOwntracksStatsIncremental(newData);
 
-        // Calculate new segments
         let extraTasks = 0;
         if (drivingLatlngs.length > 0) extraTasks++;
         if (flyingLatlngs.length > 0) extraTasks++;
@@ -530,19 +821,17 @@
         let totalNumSegments = drivingLatlngs.length * 3 + flyingLatlngs.length * 3;
         setProgressBarNumSteps(totalNumSegments + getNumTasksDone() + extraTasks + 1);
 
-        // Clear the map to redraw merged buffers
         eraseLayers();
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(map);
+        addBaseLayer();
+        resetCoverageStats();
 
-        // Calculate and merge buffers
         let newDrivingBuffer = null;
         let newFlyingBuffer = null;
         let finalDrivingBuffer = cacheData.driving?.buffer || null;
         let finalFlyingBuffer = cacheData.flying?.buffer || null;
 
         setProgressMessage("Merging with cache...");
+        renderCachedFlightLines(cacheData.flying?.lines);
         if (drivingLatlngs.length > 0) {
             newDrivingBuffer = await calculateAndDrawRoute(newData, drivingLatlngs, "blue", {
                 cachedBuffer: cacheData.driving?.buffer
@@ -550,6 +839,7 @@
             finalDrivingBuffer = newDrivingBuffer;
         } else if (cacheData.driving?.buffer) {
             renderCachedBuffer(cacheData.driving.buffer, "blue");
+            getBufferStats(cacheData.driving.buffer);
         }
 
         if (flyingLatlngs.length > 0) {
@@ -559,9 +849,9 @@
             finalFlyingBuffer = newFlyingBuffer;
         } else if (cacheData.flying?.buffer) {
             renderCachedBuffer(cacheData.flying.buffer, "red");
+            recordFlightBuffer(cacheData.flying.buffer);
         }
 
-        // Update cache with merged data
         setProgressMessage("Saving cache...");
         const latestTimestamp = getLatestTimestamp(newData);
         const newCacheData = {
@@ -572,15 +862,12 @@
             },
             flying: {
                 buffer: finalFlyingBuffer,
+                lines: getFlightLines(),
                 timestamp: latestTimestamp || cacheData.flying?.timestamp,
                 startTimestamp: cacheData.flying?.startTimestamp
             },
             settings: currentSettings,
-            metrics: {
-                highestAltitude: highestAltitude,
-                highestVelocity: highestVelocity,
-                totalDistance: distanceKm
-            }
+            metrics: currentMetrics()
         };
 
         try {
@@ -590,8 +877,7 @@
             console.error("Failed to update cache:", err);
         }
 
-        setProgressMessage("Complete");
-        updateProgressBar();
+        finishProgressBar("Complete");
         updateCacheStatusUI(newCacheData, user, device);
     }
 
@@ -615,7 +901,6 @@
         closeForm();
         updateProgressBar();
 
-        // Try to reuse a cached frequency grid (all-time queries only)
         let cache = null;
         let grid = null;
         if (isAllTimeQuery()) {
@@ -631,7 +916,6 @@
         }
         usingCache = !!cache;
 
-        // Restore metrics and date inputs from cache
         if (cache) {
             setCachedMetrics(cache.metrics);
             if (firstLoad) {
@@ -643,7 +927,6 @@
             }
         }
 
-        // Fetch: only new data when we have a valid cache, otherwise the full range
         let newData;
         if (cache) {
             const cacheDate = new Date(cache.timestamp);
@@ -656,22 +939,21 @@
             newData = await fetchLocations();
         }
 
-        // Bail only when there's nothing cached and nothing fetched
         const hasNewData = newData && !newData.isEmpty && newData.features && newData.features.length > 0;
         if (!cache && !hasNewData) {
             console.log("No data available");
-            setProgressMessage("No data available");
+            finishProgressBar("No data available");
             return;
         }
         updateProgressBar();
 
-        // Fold any new points into the grid and update timestamps/metrics
         let latest = cache?.timestamp || null;
         let earliest = cache?.startTimestamp || null;
         if (hasNewData) {
             buildHeatGrid(newData, grid);
             latest = getLatestTimestamp(newData) || latest;
             if (!earliest) earliest = getEarliestTimestamp(newData);
+            detectFlights(newData);
             if (cache) {
                 getOwntracksStatsIncremental(newData);
             } else {
@@ -685,14 +967,14 @@
         setProgressMessage("Building heatmap...");
         renderHeatGrid(grid);
 
-        // Persist the merged grid (all-time queries only)
         if (isAllTimeQuery()) {
             const cacheData = {
                 cells: serializeHeatGrid(grid),
                 cellDeg: HEATMAP_CELL_DEG,
+                schema: CACHE_SCHEMA_VERSION,
                 timestamp: latest,
                 startTimestamp: earliest,
-                metrics: { highestAltitude, highestVelocity }
+                metrics: currentMetrics()
             };
             try {
                 await setHeatmapCache(user, device, cacheData);
@@ -703,9 +985,7 @@
             updateHeatmapCacheStatusUI(cacheData, user, device);
         }
 
-        // Match routes mode: note when the view came straight from cache
-        setProgressMessage(cache && !hasNewData ? "Complete - loaded from cache" : "Complete");
-        updateProgressBar();
+        finishProgressBar(cache && !hasNewData ? "Complete - loaded from cache" : "Complete");
     }
 
     /**
@@ -715,199 +995,164 @@
         usingCache = false;
         console.log("Running fresh calculation (no cache)");
 
-        // how many steps to progress bar
         setProgressBarNumSteps(7);
 
-        // check if logged in
         const loggedIn = await checkIfLoggedIn();
 
-        if (loggedIn) {
-            closeForm();
-            updateProgressBar();
-
-            // locations
-            setProgressMessage("Fetching location data...");
-            const data = await fetchLocations();
-
-            if (!data || data.isEmpty) {
-                console.log("No data available");
-                setProgressMessage("No data available");
-                return;
-            }
-
-            updateProgressBar();
-
-            // filter data
-            setProgressMessage("Processing data...");
-            const { drivingLatlngs, flyingLatlngs } = await filterData(data)
-            updateProgressBar();
-
-            // If no segment has enough points for route calculation, buffer points directly
-            const hasRoutableSegments =
-                drivingLatlngs.some(seg => seg.length > 1) ||
-                flyingLatlngs.some(seg => seg.length > 1);
-            if (!hasRoutableSegments) {
-                setProgressMessage("Showing location points...");
-                let pointBuffer = null;
-                const circleSize = parseFloat(document.getElementById('circleSize').value) || 0.5;
-
-                for (const feature of data.features) {
-                    if (feature.geometry?.coordinates) {
-                        const [lng, lat] = feature.geometry.coordinates;
-                        const point = turf.point([lng, lat]);
-                        const buffer = turf.buffer(point, circleSize, { units: 'kilometers', steps: 8 });
-                        if (pointBuffer) {
-                            try { pointBuffer = turf.union(pointBuffer, buffer); }
-                            catch (e) { /* skip overlapping point */ }
-                        } else {
-                            pointBuffer = buffer;
-                        }
-                    }
-                }
-
-                if (pointBuffer) {
-                    renderCachedBuffer(pointBuffer, "blue");
-                    getBufferStats(pointBuffer);
-                    getOwntracksStats(data);
-
-                    if (isAllTimeQuery()) {
-                        const latestTimestamp = getLatestTimestamp(data);
-                        const earliestTimestamp = getEarliestTimestamp(data);
-                        const cacheData = {
-                            driving: { buffer: pointBuffer, timestamp: latestTimestamp, startTimestamp: earliestTimestamp },
-                            flying: { buffer: null, timestamp: latestTimestamp, startTimestamp: earliestTimestamp },
-                            settings: currentSettings,
-                            metrics: { highestAltitude, highestVelocity, totalDistance: distanceKm }
-                        };
-                        try {
-                            await setCache(user, device, cacheData);
-                        } catch (e) { console.error("Cache save error:", e); }
-                        updateCacheStatusUI(cacheData, user, device);
-                    }
-                }
-
-                setProgressBarNumSteps(getNumTasksDone());
-                setProgressMessage("Complete");
-                updateProgressBar();
-                return;
-            }
-
-            // get owntracks stats
-            getOwntracksStats(data);
-
-            // extra buffer stats for each type of data, driving/flying
-            let extraTasks = 0;
-            if (drivingLatlngs.length > 0) {
-                extraTasks++;
-            }
-            if (flyingLatlngs.length > 0) {
-                extraTasks++;
-            }
-
-            let totalNumSegments = drivingLatlngs.length * 3 + flyingLatlngs.length * 3;
-            // Only add +1 for cache saving task if this is an all-time query
-            const cacheTask = isAllTimeQuery() ? 1 : 0;
-            setProgressBarNumSteps(totalNumSegments + getNumTasksDone() + extraTasks + cacheTask);
-
-            let drivingBuffer = null;
-            let flyingBuffer = null;
-
-            setProgressMessage("Calculating routes...");
-            if (drivingLatlngs.length > 0) {
-                drivingBuffer = await calculateAndDrawRoute(data, drivingLatlngs, "blue");
-            }
-
-            if (flyingLatlngs.length > 0) {
-                flyingBuffer = await calculateAndDrawRoute(data, flyingLatlngs, "red");
-            }
-
-            // Save to cache if this is an all-time query
-            if (isAllTimeQuery()) {
-                setProgressMessage("Saving cache...");
-                const earliestTimestamp = getEarliestTimestamp(data);
-                const latestTimestamp = getLatestTimestamp(data);
-
-                const cacheData = {
-                    driving: {
-                        buffer: drivingBuffer,
-                        timestamp: latestTimestamp,
-                        startTimestamp: earliestTimestamp
-                    },
-                    flying: {
-                        buffer: flyingBuffer,
-                        timestamp: latestTimestamp,
-                        startTimestamp: earliestTimestamp
-                    },
-                    settings: currentSettings,
-                    metrics: {
-                        highestAltitude: highestAltitude,
-                        highestVelocity: highestVelocity,
-                        totalDistance: distanceKm
-                    }
-                };
-
-                try {
-                    await setCache(user, device, cacheData);
-                    completeTask("cache saved", 0);
-                    console.log("Buffer cache saved successfully");
-                } catch (err) {
-                    console.error("Failed to save cache:", err);
-                }
-
-                updateCacheStatusUI(cacheData, user, device);
-            }
-
-            setProgressMessage("Complete");
-            updateProgressBar();
-        } else {
+        if (!loggedIn) {
             openForm();
+            return;
         }
+
+        closeForm();
+        updateProgressBar();
+
+        setProgressMessage("Fetching location data...");
+        const data = await fetchLocations();
+
+        if (!data || data.isEmpty) {
+            console.log("No data available");
+            finishProgressBar(data ? "No data available" : "Couldn't load location data");
+            return;
+        }
+
+        updateProgressBar();
+
+        setProgressMessage("Processing data...");
+        const { drivingLatlngs, flyingLatlngs } = await filterData(data)
+        updateProgressBar();
+
+        // If no segment has enough points for route calculation, buffer points directly
+        const hasRoutableSegments =
+            drivingLatlngs.some(seg => seg.length > 1) ||
+            flyingLatlngs.some(seg => seg.length > 1);
+        if (!hasRoutableSegments) {
+            setProgressMessage("Showing location points...");
+            let pointBuffer = null;
+            const circleSize = getBufferKm();
+
+            for (const feature of data.features) {
+                if (feature.geometry?.coordinates) {
+                    const [lng, lat] = feature.geometry.coordinates;
+                    const point = turf.point([lng, lat]);
+                    const buffer = turf.buffer(point, circleSize, { units: 'kilometers', steps: 8 });
+                    if (pointBuffer) {
+                        try { pointBuffer = turf.union(pointBuffer, buffer); }
+                        catch (e) { /* skip overlapping point */ }
+                    } else {
+                        pointBuffer = buffer;
+                    }
+                }
+            }
+
+            if (pointBuffer) {
+                renderCachedBuffer(pointBuffer, "blue");
+                getBufferStats(pointBuffer);
+                getOwntracksStats(data);
+
+                if (isAllTimeQuery()) {
+                    const latestTimestamp = getLatestTimestamp(data);
+                    const earliestTimestamp = getEarliestTimestamp(data);
+                    const cacheData = {
+                        driving: { buffer: pointBuffer, timestamp: latestTimestamp, startTimestamp: earliestTimestamp },
+                        flying: { buffer: null, timestamp: latestTimestamp, startTimestamp: earliestTimestamp },
+                        settings: currentSettings,
+                        metrics: currentMetrics()
+                    };
+                    try {
+                        await setCache(user, device, cacheData);
+                    } catch (e) { console.error("Cache save error:", e); }
+                    updateCacheStatusUI(cacheData, user, device);
+                }
+            }
+
+            finishProgressBar("Complete");
+            return;
+        }
+
+        getOwntracksStats(data);
+
+        let extraTasks = 0;
+        if (drivingLatlngs.length > 0) {
+            extraTasks++;
+        }
+        if (flyingLatlngs.length > 0) {
+            extraTasks++;
+        }
+
+        let totalNumSegments = drivingLatlngs.length * 3 + flyingLatlngs.length * 3;
+        const cacheTask = isAllTimeQuery() ? 1 : 0;
+        setProgressBarNumSteps(totalNumSegments + getNumTasksDone() + extraTasks + cacheTask);
+
+        let drivingBuffer = null;
+        let flyingBuffer = null;
+
+        setProgressMessage("Calculating routes...");
+        if (drivingLatlngs.length > 0) {
+            drivingBuffer = await calculateAndDrawRoute(data, drivingLatlngs, "blue");
+        }
+
+        if (flyingLatlngs.length > 0) {
+            flyingBuffer = await calculateAndDrawRoute(data, flyingLatlngs, "red");
+        }
+
+        if (isAllTimeQuery()) {
+            setProgressMessage("Saving cache...");
+            const earliestTimestamp = getEarliestTimestamp(data);
+            const latestTimestamp = getLatestTimestamp(data);
+
+            const cacheData = {
+                driving: {
+                    buffer: drivingBuffer,
+                    timestamp: latestTimestamp,
+                    startTimestamp: earliestTimestamp
+                },
+                flying: {
+                    buffer: flyingBuffer,
+                    lines: getFlightLines(),
+                    timestamp: latestTimestamp,
+                    startTimestamp: earliestTimestamp
+                },
+                settings: currentSettings,
+                metrics: currentMetrics()
+            };
+
+            try {
+                await setCache(user, device, cacheData);
+                completeTask("cache saved", 0);
+                console.log("Buffer cache saved successfully");
+            } catch (err) {
+                console.error("Failed to save cache:", err);
+            }
+
+            updateCacheStatusUI(cacheData, user, device);
+        }
+
+        finishProgressBar("Complete");
     }
 
-    /**
-     * Update the cache status display in the UI
-     */
     async function updateCacheStatusUI(cacheData, user, device) {
-        const cacheStatusEl = document.getElementById('settingsCache');
-        if (!cacheStatusEl) return;
-
         try {
             const dateRange = getCacheDateRange(cacheData);
             const cacheSize = await getCacheSize(user, device);
 
-            if (dateRange) {
-                document.getElementById('cacheDateRange').textContent =
-                    formatCacheDate(dateRange.startDate) + ' - ' + formatCacheDate(dateRange.endDate);
-            } else {
-                document.getElementById('cacheDateRange').textContent = 'No cached data';
-            }
-
+            document.getElementById('cacheDateRange').textContent = dateRange
+                ? formatCacheDate(dateRange.startDate) + ' – ' + formatCacheDate(dateRange.endDate)
+                : 'No cached data';
             document.getElementById('cacheSize').textContent = formatBytes(cacheSize);
-            cacheStatusEl.style.display = 'block';
         } catch (err) {
             console.error("Error updating cache status UI:", err);
         }
     }
 
-    /**
-     * Update the cache status display for the heatmap cache (used in heatmap mode).
-     */
     async function updateHeatmapCacheStatusUI(cacheData, user, device) {
-        const cacheStatusEl = document.getElementById('settingsCache');
-        if (!cacheStatusEl) return;
-
         try {
             const cacheSize = await getCacheSize(user, device, '_heatmap');
 
-            if (cacheData && cacheData.startTimestamp && cacheData.timestamp) {
-                document.getElementById('cacheDateRange').textContent =
-                    formatCacheDate(new Date(cacheData.startTimestamp)) + ' - ' + formatCacheDate(new Date(cacheData.timestamp));
-            } else {
-                document.getElementById('cacheDateRange').textContent = 'No cached data';
-            }
-
+            document.getElementById('cacheDateRange').textContent = (cacheData && cacheData.startTimestamp && cacheData.timestamp)
+                ? formatCacheDate(new Date(cacheData.startTimestamp)) + ' – ' + formatCacheDate(new Date(cacheData.timestamp))
+                : 'No cached data';
             document.getElementById('cacheSize').textContent = formatBytes(cacheSize);
-            cacheStatusEl.style.display = 'block';
         } catch (err) {
             console.error("Error updating heatmap cache status UI:", err);
         }
@@ -934,23 +1179,23 @@
         }
     }
 
-    // run on page load
     window.onload = function () {
-
-        // reflect the stored view mode in the quick-menu radios
         syncMapModeUI();
+        syncFlightsUI();
+        syncBufferStepper();
+        syncTimeframeUI();
 
-        // load user settings
         getUserSettings();
 
-        // find users and devices, then calculate route for the first entry
         getUsersAndDevices().then(usersAndDevices => {
-
-            // if no users, not logged in
             if (usersAndDevices === -1) {
                 openForm();
                 return;
             }
+
+            restoreDeviceSelection();
+            renderDeviceChips();
+            syncConfigChip();
 
             // Logged in, but no device has reported any data yet. This is the
             // typical state for a brand-new account that hasn't pointed the
@@ -959,6 +1204,7 @@
             const hasDevices = document.getElementById('deviceBox').options.length > 0;
             if (!hasDevices) {
                 closeForm();
+                finishProgressBar("No devices have reported yet");
                 showSetupGuide();
                 return;
             }
@@ -966,198 +1212,6 @@
             runTasks();
         });
     };
-
-
-</script>
-
-
-<div id="infoBox">
-
-    <div id="leftPanel">
-        <!-- MAP CONTROLS -->
-
-        <div class="innerPanel">
-            <div class="titlePanel">
-                <h1> Filters </h1>
-                <p class="settingInfo">Is your data showing incorrectly on the map? Try adjusting these settings. Make
-                    sure
-                    the device is correct, and try changing time frame.</p>
-
-            </div>
-
-            <div class="subPanel">
-                <h4>Choose a device</h4>
-                <p class="settingInfo">Choose which device to track.</p>
-
-                <select class="form-select" id="deviceBox" onchange="resetMap()">
-                    <option value="" selected disabled>Choose a device</option>
-                </select>
-            </div>
-
-
-            <div class="subPanel">
-                <h4>Time frame</h4>
-                <p class="settingInfo">Filter the map to only shows GPS data between these two dates. Time is in UTC.
-                </p>
-                <div class="date-row">
-                    <div class="date-col">
-                        <h5>Start Date</h5>
-                        <input type="hidden" id="startBox" name="trip-start" value="" data-datepicker
-                            data-datepicker-align="left" />
-                    </div>
-                    <div class="date-col">
-                        <h5>End Date</h5>
-                        <input type="hidden" id="endBox" name="trip-end" value="" data-datepicker
-                            data-datepicker-align="right" />
-                    </div>
-                    <div class="date-col date-col-apply">
-                        <button type="button" class="btn btn-outline-primary apply-filters-btn" onclick="setCustomTimeFilter(); resetMap(map)">Apply</button>
-                    </div>
-                </div>
-
-                <div class="time-presets">
-                    <button type="button" class="btn btn-primary time-period-btn" onclick="changeDateRange('month')">Last Month</button>
-                    <button type="button" class="btn btn-primary time-period-btn" onclick="changeDateRange('week')">Last Week</button>
-                    <button type="button" class="btn btn-primary time-period-btn" onclick="changeDateRange('48hrs')">48 Hours</button>
-                    <button type="button" class="btn btn-primary time-period-btn" onclick="changeDateRange('24hrs')">24 Hours</button>
-                    <button type="button" class="btn btn-success time-period-btn" onclick="loadAllTimeData()">All Time</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div id="rightPanel">
-        <!-- MAP INFO -->
-        <div class="titlePanel">
-            <h1 id="title">Information </h1>
-            <p> This map shows the location history of the devices that are sending their location data to the Owntracks
-                server. <a href="/about">Learn more.</a>
-            </p>
-        </div>
-
-        <!-- Stats are rendered from the shared STAT_DEFINITIONS in statsPanel.js
-             so this page and Everyone's Roads stay in sync (labels + info icons). -->
-        <div class="subPanel" id="statsPanel"></div>
-        <script>renderStatPanels(document.getElementById("statsPanel"));</script>
-    </div>
-</div>
-
-
-{% endblock %}
-
-{% block scripts %}
-
-<script>
-    // Settings Panel Functions
-    function toggleSettingsPanel() {
-        const panel = document.getElementById('settingsPanel');
-        const backdrop = document.getElementById('settingsPanelBackdrop');
-        const isOpen = panel.classList.contains('open');
-
-        if (isOpen) {
-            closeSettingsPanel();
-        } else {
-            openSettingsPanel();
-        }
-    }
-
-    function openSettingsPanel() {
-        const panel = document.getElementById('settingsPanel');
-        const backdrop = document.getElementById('settingsPanelBackdrop');
-        panel.classList.add('open');
-        backdrop.classList.add('open');
-    }
-
-    function closeSettingsPanel() {
-        const panel = document.getElementById('settingsPanel');
-        const backdrop = document.getElementById('settingsPanelBackdrop');
-        panel.classList.remove('open');
-        backdrop.classList.remove('open');
-    }
-
-    // Settings nav: scroll to section and update active button
-    function scrollToSetting(id) {
-        const target = document.getElementById(id);
-        const content = document.querySelector('.settingsPanelContent');
-        if (target && content) {
-            content.scrollTo({
-                top: target.offsetTop - content.offsetTop,
-                behavior: 'smooth'
-            });
-            updateActiveNavBtn(id);
-        }
-    }
-
-    function updateActiveNavBtn(activeId) {
-        document.querySelectorAll('.settings-nav-btn').forEach(btn => {
-            btn.classList.remove('active');
-            if (btn.getAttribute('onclick').includes(activeId)) {
-                btn.classList.add('active');
-            }
-        });
-    }
-
-    // Update active nav button on scroll
-    (function() {
-        const content = document.querySelector('.settingsPanelContent');
-        if (!content) return;
-
-        const sectionIds = ['settingsMap', 'settingsCache', 'settingsAccount'];
-
-        content.addEventListener('scroll', function() {
-            const scrollTop = content.scrollTop;
-            let activeId = sectionIds[0];
-
-            for (const id of sectionIds) {
-                const el = document.getElementById(id);
-                if (el && el.offsetTop - content.offsetTop <= scrollTop + 10) {
-                    activeId = id;
-                }
-            }
-
-            updateActiveNavBtn(activeId);
-        });
-    })();
-
-    // Close panels on Escape key
-    document.addEventListener('keydown', function(event) {
-        if (event.key === 'Escape') {
-            const setupGuide = document.getElementById('setupGuideModal');
-            if (setupGuide && setupGuide.style.display !== 'none') {
-                hideSetupGuide();
-                return;
-            }
-            const deleteForm = document.getElementById('deleteConfirmForm');
-            if (deleteForm && deleteForm.style.display !== 'none') {
-                hideDeleteConfirm();
-                return;
-            }
-            const panel = document.getElementById('settingsPanel');
-            if (panel && panel.classList.contains('open')) {
-                closeSettingsPanel();
-            }
-        }
-    });
-
-    // Save settings on Apply button click
-    document.getElementById('applySettingsButton').addEventListener('click', function () {
-        fetch('/save_settings', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                circleSize: document.getElementById('circleSize').value
-            })
-        })
-            .then(response => response.json())
-            .then(data => {
-                console.log('Settings saved:', data);
-            })
-            .catch((error) => {
-                console.error('Error:', error);
-            });
-    });
-
 </script>
 
 {% endblock %}

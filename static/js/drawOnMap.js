@@ -4,6 +4,108 @@ let routingControls = [];
 // Track the heatmap layer so it can be cleared on re-render
 let heatLayer = null;
 
+// Flight buffers and lines are always built (they live in the cache) but are
+// only attached to the map while the Flights toggle is on.
+let flightLayers = [];
+let exploredLayers = [];
+// Flight paths as GeoJSON so they can be cached alongside the flight buffer
+// and redrawn on cached loads (the buffer alone loses the dashed line).
+let flightLines = [];
+let zoomHookAttached = false;
+
+const EXPLORED_COLOR = '#3d6ba8';
+const FLIGHT_COLOR = '#e6a23c';
+const FLIGHT_LINE_COLOR = '#c98418';
+const ROAD_LINE_STYLE = { color: '#dc3545', weight: 3, opacity: .9 };
+
+// A 0.5 km buffer is sub-pixel below zoom ~9, so the polygon outline is
+// thickened and the fill darkened as the map zooms out to keep it legible.
+function zoomBoost() {
+    const zoom = (typeof map !== 'undefined' && map) ? map.getZoom() : 12;
+    return Math.max(0, 9 - zoom);
+}
+
+function exploredStyle() {
+    const boost = zoomBoost();
+    return {
+        color: EXPLORED_COLOR, weight: 1 + boost * 0.9, opacity: Math.min(.75, .55 + boost * .04),
+        fillColor: EXPLORED_COLOR, fillOpacity: Math.min(.5, .38 + boost * .025)
+    };
+}
+
+// The flight buffer is fill-only: with an outline it turns into a solid band
+// when zoomed out and hides the dashed path, which is what the legend promises.
+function flightBufferStyle() {
+    return { stroke: false, fillColor: FLIGHT_COLOR, fillOpacity: .22 };
+}
+
+function flightLineStyle() {
+    const boost = zoomBoost();
+    return { color: FLIGHT_LINE_COLOR, weight: 2.4 + boost * 0.5, opacity: .8, dashArray: '10 8' };
+}
+
+function restyleForZoom() {
+    exploredLayers.forEach(layer => layer.setStyle(exploredStyle()));
+    flightLayers.forEach(({ layer, style }) => layer.setStyle(style()));
+}
+
+function ensureZoomHook() {
+    if (zoomHookAttached) return;
+    zoomHookAttached = true;
+    map.on('zoomend', restyleForZoom);
+}
+
+function flightsShown() {
+    return typeof getFlightsShown === 'function' ? getFlightsShown() : true;
+}
+
+function addFlightLayer(layer, style) {
+    ensureZoomHook();
+    flightLayers.push({ layer, style });
+    if (flightsShown()) {
+        layer.addTo(map);
+        raiseFlightLines();
+    }
+}
+
+function raiseFlightLines() {
+    flightLayers.forEach(({ layer, style }) => {
+        if (style === flightLineStyle && map.hasLayer(layer)) layer.bringToFront();
+    });
+}
+
+function renderFlightLine(linestring) {
+    flightLines.push(linestring);
+    addFlightLayer(L.geoJSON(linestring, { style: flightLineStyle() }), flightLineStyle);
+}
+
+function renderCachedFlightLines(lines) {
+    (lines || []).forEach(renderFlightLine);
+}
+
+function getFlightLines() {
+    return flightLines.slice();
+}
+
+function setFlightLayersVisible(shown) {
+    flightLayers.forEach(({ layer }) => shown ? layer.addTo(map) : layer.remove());
+    if (shown) raiseFlightLines();
+}
+
+function hasRouteLines() {
+    return routingControls.length > 0;
+}
+
+function notifyLegend() {
+    if (typeof syncLegend === 'function') syncLegend();
+}
+
+function addBaseLayer() {
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+}
+
 /**
  * Given the location data, list of latlngs, and color, this function calculates the routes for all given latlngs and draws it on the map as a single object.
  * @param {*} data retrieved from fetchLocations();
@@ -14,6 +116,7 @@ let heatLayer = null;
  * @returns {Object} The final buffer GeoJSON
  */
 async function calculateAndDrawRoute(data, latlngsList, color, options = {}) {
+    const isFlight = color === "red";
     let lineStrings = [];
     for (const latlngs of latlngsList) {
         //drawing buffer
@@ -24,7 +127,8 @@ async function calculateAndDrawRoute(data, latlngsList, color, options = {}) {
             //simple route buffer can handle any number, but gets pretty slow north of 3000
             //no route is much quicker, but less accurate. Use the minDistance value to adjust accuracy.
             //Points between .01km of each other will be skipped if you pass in .01km
-            if (data.features.length < 500) {
+            //Flights never go through OSRM: there is no road between two airports.
+            if (data.features.length < 500 && !isFlight) {
                 try {
                     linestring = await calculateComplexRoute(latlngs);
                 } catch (err) {
@@ -42,7 +146,10 @@ async function calculateAndDrawRoute(data, latlngsList, color, options = {}) {
             }
             updateProgressBar();
 
-            console.log("linestring: ", linestring);
+            if (isFlight) {
+                renderFlightLine(linestring);
+            }
+
             lineStrings.push(linestring);
         }
 
@@ -155,13 +262,16 @@ async function calculateComplexRoute(latlngs) {
                 profile: 'car', // or 'bike', 'foot' depending on your needs
             }),
             routeWhileDragging: false,
+            addWaypoints: false,
+            fitSelectedRoutes: false,
+            show: false,
+            lineOptions: { styles: [ROAD_LINE_STYLE], addWaypoints: false },
             createMarker: function () { return null; }, // Disable default marker
         }).addTo(map);
 
         // Track this control so it can be removed later
         routingControls.push(control);
-
-        control.hide(); // hide top right panel
+        notifyLegend();
 
         control.on('routesfound', function (e) {
             let routes = e.routes;
@@ -177,8 +287,10 @@ async function calculateComplexRoute(latlngs) {
             resolve(lineString);
         });
 
-        // Handle errors if needed
         control.on('routingerror', function (error) {
+            try { map.removeControl(control); } catch (e) { /* already gone */ }
+            routingControls = routingControls.filter(c => c !== control);
+            notifyLegend();
             reject(new Error("Routing failed: " + error.message));
         });
     });
@@ -195,6 +307,7 @@ async function calculateComplexRoute(latlngs) {
  * @returns {Object} The unified buffer GeoJSON
  */
 async function createUnifiedBuffer(lineStrings, tolerance, color, options = {}) {
+    const isFlight = color === "red";
     let unifiedBuffer = options.cachedBuffer || null;
 
     for (const lineString of lineStrings) {
@@ -212,7 +325,7 @@ async function createUnifiedBuffer(lineStrings, tolerance, color, options = {}) 
             unifiedBuffer = buffer;
         }
 
-        getLinestringStats(lineString);
+        getLinestringStats(lineString, isFlight);
         updateProgressBar();
     }
 
@@ -226,67 +339,33 @@ async function createUnifiedBuffer(lineStrings, tolerance, color, options = {}) 
         return unifiedBuffer;
     }
 
-    let bufferColor = "rgba(0, 0, 255, 0.4)"; // Default color is blue
-    // Set the buffer color based on the selected color
-    if (color == "blue") {
-        bufferColor = "rgba(0, 0, 255, 0.4)";
-    } else if (color == "green") {
-        bufferColor = "rgba(0, 255, 0, 0.4)";
-    }
-    else if (color == "red") {
-        bufferColor = "rgba(255, 0, 0, 0.4)";
-    }
+    renderCachedBuffer(unifiedBuffer, color);
 
-    // Convert the buffer to GeoJSON and add it to the map
-    let bufferLayer = L.geoJSON(unifiedBuffer, {
-        style: function () {
-            return { color: bufferColor, weight: 2 };
-        }
-    }).addTo(map);
-
-    // Adjust the map to fit the new buffer bounds
-    try {
-        const bounds = bufferLayer.getBounds();
-        map.fitBounds(bounds);
-    }
-    catch (err) {
-        console.log("No bounds found, err: " + err);
-    }
-
-    getBufferStats(unifiedBuffer);
+    getBufferStats(unifiedBuffer, isFlight);
     updateProgressBar();
 
     return unifiedBuffer;
 }
 
-/**
- * Render a cached buffer directly to the map
- * @param {Object} buffer - The cached buffer GeoJSON
- * @param {string} color - "blue", "green", or "red"
- */
+// A flight buffer never drives the viewport: fitting to it would zoom the map
+// out to an airport even while flights are hidden.
 function renderCachedBuffer(buffer, color) {
     if (!buffer) return;
 
-    let bufferColor = "rgba(0, 0, 255, 0.4)";
-    if (color == "blue") {
-        bufferColor = "rgba(0, 0, 255, 0.4)";
-    } else if (color == "green") {
-        bufferColor = "rgba(0, 255, 0, 0.4)";
-    } else if (color == "red") {
-        bufferColor = "rgba(255, 0, 0, 0.4)";
+    if (color === "red") {
+        addFlightLayer(L.geoJSON(buffer, { style: flightBufferStyle() }), flightBufferStyle);
+        return;
     }
 
-    let bufferLayer = L.geoJSON(buffer, {
-        style: function () {
-            return { color: bufferColor, weight: 2 };
-        }
-    }).addTo(map);
+    ensureZoomHook();
+    let bufferLayer = L.geoJSON(buffer, { style: exploredStyle() }).addTo(map);
+    exploredLayers.push(bufferLayer);
 
     try {
         const bounds = bufferLayer.getBounds();
         map.fitBounds(bounds);
     } catch (err) {
-        console.log("No bounds found for cached buffer, err: " + err);
+        console.log("No bounds found for buffer, err: " + err);
     }
 }
 
@@ -495,31 +574,20 @@ function resetMap() {
     try {
         resetProgressBar();
         eraseLayers();
-        resetCoverageStats()
+        resetCoverageStats();
+        clearFlightIntervals();
     }
     catch (err) {
         console.log("No map data to erase, err: " + err);
     }
 
-
-    //Remake route
-    // Add a tile layer
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    }).addTo(map);
+    addBaseLayer();
 
     // get new data
     runTasks();
 }
 
-// Function to erase the route from the map
 function eraseRoute() {
-    map.removeControl(control);
-}
-
-// Function to erase all layers from the map
-function eraseLayers() {
-    // Remove all routing controls first
     routingControls.forEach(control => {
         try {
             map.removeControl(control);
@@ -528,10 +596,19 @@ function eraseLayers() {
         }
     });
     routingControls = [];
+    notifyLegend();
+}
+
+// Function to erase all layers from the map
+function eraseLayers() {
+    eraseRoute();
 
     // Remove all other layers (includes the heatmap layer, if present)
     map.eachLayer((layer) => {
         layer.remove();
     });
+    flightLayers = [];
+    flightLines = [];
+    exploredLayers = [];
     heatLayer = null;
 }

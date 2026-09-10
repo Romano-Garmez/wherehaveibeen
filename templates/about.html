@@ -1,30 +1,52 @@
 {% extends "layout.html" %}
 
-{%block title %}
+{% block title %}
 <title>What is WhereHaveIBeen?</title>
-{%endblock%}
+{% endblock %}
+
+{% block bodyclass %}content-page{% endblock %}
 
 {% block main %}
 
-<div id="map-container">
-    <div id="map"></div>
-    <div id="map-shadow"></div>
-    <div id="progressBar">
-        <div id="progressBarInner"></div>
-        <span id="progressBarMessage"></span>
+<div class="content">
+    <div class="demo-map">
+        <div id="map"></div>
+    </div>
+
+    <div class="panel">
+        <h1>Ever heard of a little game called Forza Horizon?</h1>
+        <p>I've always found the idea of a map that shows the places you've discovered fascinating. Forza Horizon
+        implemented a map that had every road greyed out until you drove over it once. It encouraged you to
+        drive every road in the entire game, exploring the map.</p>
+        <p>I've been looking for more excuses to get out and see things I haven't seen before, so I built
+        WhereHaveIBeen to mark which areas of the "map" have already been discovered by me.</p>
+        <div class="sub">
+            <h4>What is OwnTracks?</h4>
+            <p>OwnTracks is an open-source alternative to other tracking apps like
+            Find My, or Life360. The interesting part is that you host the server yourself. You have access to all of
+            your location history.</p>
+            <p>Download OwnTracks for <a href="https://apps.apple.com/app/owntracks/id692424691" target="_blank" rel="noopener">iOS</a>
+            or <a href="https://play.google.com/store/apps/details?id=org.owntracks.android" target="_blank" rel="noopener">Android</a>,
+            or learn more at <a href="https://owntracks.org/" target="_blank" rel="noopener">owntracks.org</a>.</p>
+        </div>
+        <div class="sub">
+            <h4>What is WhereHaveIBeen?</h4>
+            <p>WhereHaveIBeen is a web app to display your OwnTracks location history while doing some extra
+            processing to snap the routes between each location update to roads. This allows you to see the exact
+            route you've taken, without wasting your phone battery by uploading location every second.</p>
+            <p>Want to learn how to use it? Check the <a href="/how-to-use">How to use</a> guide.</p>
+        </div>
     </div>
 </div>
 
 <script>
     var map;
 
-    async function runFakeTasks() {
-        // Initialize the map (same as main page)
-        map = L.map('map').setView([37.7749, -122.4194], 13);
-
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(map);
+    function runFakeTasks() {
+        map = L.map('map', { zoomControl: false }).setView([37.7749, -122.4194], 13);
+        L.control.zoom({ position: 'bottomleft' }).addTo(map);
+        map.attributionControl.setPrefix(false);
+        addBaseLayer();
 
         // Fake data: Multiple routes around San Francisco and Oakland
         // Route 1: Downtown through North Beach to Fisherman's Wharf
@@ -132,7 +154,6 @@
         var routes = [route1, route2, route3, route4, route5, route6,
                       route7, route8, route9, route10, route11, route12];
 
-        // Build linestrings and buffers directly (same approach as main page)
         var unifiedBuffer = null;
         for (var i = 0; i < routes.length; i++) {
             var coords = routes[i].map(function(p) { return [p[1], p[0]]; }); // swap to [lng, lat]
@@ -146,7 +167,6 @@
             }
         }
 
-        // Render using the same function the main page uses (includes fitBounds)
         renderCachedBuffer(unifiedBuffer, "blue");
     }
 
@@ -154,32 +174,5 @@
         runFakeTasks();
     };
 </script>
-
-<div id="infoBox">
-    <div id="leftPanel">
-        <h1>Ever heard of a little game called Forza Horizon?</h1>
-        <p>I've always found the idea of a map that shows the places you've discovered fascinating. Forza Horizon
-        implemented a map that had every road greyed out until you drove over it once. It encouraged you to
-        drive every road in the entire game, exploring the map.</p>
-        <p>I've been looking for more excuses to get out and see things I haven't seen before, so I built
-        WhereHaveIBeen to mark which areas of the "map" have already been discovered by me.</p>
-        <div class="subPanel">
-            <h4>What is OwnTracks?</h4>
-            <p>OwnTracks is an open-source alternative to other tracking apps like
-            Find My, or Life360. The interesting part is that you host the server yourself. You have access to all of
-            your location history.</p>
-            <p>Download OwnTracks for <a href="https://apps.apple.com/app/owntracks/id692424691" target="_blank">iOS</a>
-            or <a href="https://play.google.com/store/apps/details?id=org.owntracks.android" target="_blank">Android</a>,
-            or learn more at <a href="https://owntracks.org/" target="_blank">owntracks.org</a>.</p>
-        </div>
-        <div class="subPanel">
-            <h4>What is WhereHaveIBeen?</h4>
-            <p>WhereHaveIBeen is a web app to display your OwnTracks location history while doing some extra
-            processing to snap the routes between each location update to roads. This allows you to see the exact
-            route you've taken, without wasting your phone battery by uploading location every second.</p>
-            <p>Want to learn how to use it? Check the <a href="/how-to-use">How To Use</a> guide in the navbar.</p>
-        </div>
-    </div>
-</div>
 
 {% endblock %}

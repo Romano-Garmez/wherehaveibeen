@@ -37,7 +37,8 @@ Create a `.env` file with:
 - `drawOnMap.js` - Route calculation and Leaflet map rendering
 - `logIn.js` - Authentication handling
 - `cacheManager.js` - IndexedDB caching with settings validation
-- `progressBar.js` - Progress UI management
+- `progressBar.js` - Progress strip and reload-chip state
+- `statsPanel.js` - Stats ribbon; single source of truth for stat labels and unit formatting (imperial first, metric underneath)
 
 **Data Flow:**
 ```

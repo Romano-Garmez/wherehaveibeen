@@ -6,6 +6,9 @@
 const DB_NAME = 'WhereHaveIBeenCache';
 const DB_VERSION = 1;
 const STORE_NAME = 'bufferCache';
+// Bump whenever the way cached shapes or metrics are derived changes (flight
+// detection, stat classification, stored fields). Older entries are recomputed.
+const CACHE_SCHEMA_VERSION = 4;
 
 let db = null;
 
@@ -355,6 +358,10 @@ function validateHeatmapCache(cache) {
         console.log('Heatmap cache invalid: cell size changed');
         return false;
     }
+    if (cache.schema !== CACHE_SCHEMA_VERSION) {
+        console.log('Heatmap cache invalid: schema changed');
+        return false;
+    }
     return true;
 }
 
@@ -417,6 +424,11 @@ function formatBytes(bytes) {
  */
 function validateCacheSettings(cachedSettings, currentBufferSize) {
     if (!cachedSettings) return false;
+
+    if (cachedSettings.schema !== CACHE_SCHEMA_VERSION) {
+        console.log('Cache invalid: schema changed from', cachedSettings.schema, 'to', CACHE_SCHEMA_VERSION);
+        return false;
+    }
 
     // Check if buffer size matches
     if (cachedSettings.bufferSize !== currentBufferSize) {

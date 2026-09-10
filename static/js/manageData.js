@@ -2,16 +2,24 @@
 
 //skip points withing .5 km of the previous point
 const minDistanceFilter = .5; // Adjust the distance threshold in kilometers (10 meters for example)
-const drivingFlyingThresholdKMH = 200; // If above threshold, assume flying, else driving
+const drivingFlyingThresholdMPH = 200; // If above threshold, assume flying, else driving
+const drivingFlyingThresholdKMH = drivingFlyingThresholdMPH * KM_PER_MI;
 const distanceBetweenPointsFlyingThreshold = 100; // If distance is greater than this, assume flying
 
-//stats
+//stats: driving and flight figures are accumulated separately so the Flights
+//toggle can include or exclude them without recomputing anything
 let highestAltitude = 0;
 let highestVelocity = 0;
 let distanceKm = 0;
 let area = 0;
+let flightHighestAltitude = 0;
+let flightHighestVelocity = 0;
+let flightDistanceKm = 0;
+let flightArea = 0;
 
 let firstLoad = true;
+
+let activeTimeframe = 'all';
 
 function debuggingTest() {
     const point1 = { lat: 36.983253, lng: -121.970049 };
@@ -186,6 +194,11 @@ function changeDateRange(timeframe) {
         setCustomTimeFilter();
     }
 
+    activeTimeframe = timeframe;
+    if (typeof syncTimeframeUI === 'function') {
+        syncTimeframeUI();
+    }
+
     resetMap();
 }
 
@@ -194,78 +207,115 @@ function changeDateRange(timeframe) {
  * @param {*} data GPS data from OwnTracks
  * @returns 
  */
+// A plane is well below the entry speed on the take-off roll and on final
+// approach, so a flight is detected as an episode rather than point by point:
+// it opens on a fast point (or a >100 km jump), pulls in the still-fast points
+// just before it, and only closes once speed falls to taxiing pace, which a car
+// on a freeway does but a plane on approach never does.
+const FLIGHT_EXIT_KMH = 100;
+const FLIGHT_LOOKBACK_SECONDS = 30 * 60;
+const FLIGHT_STALE_SECONDS = 30 * 60;
+
+// [startSeconds, endSeconds] per detected flight from the last filterData run;
+// null when no detection has run for the current data (heatmap mode).
+let lastFlightIntervals = null;
+
+function featureTime(feature) {
+    const p = feature.properties;
+    if (p.tst != null) return Number(p.tst);
+    return Date.parse(p.isotst) / 1000;
+}
+
+function clearFlightIntervals() {
+    lastFlightIntervals = null;
+}
+
+function isFlightFeature(feature) {
+    if (lastFlightIntervals === null) {
+        return feature.properties.vel > drivingFlyingThresholdKMH;
+    }
+    const t = featureTime(feature);
+    return lastFlightIntervals.some(([from, to]) => t >= from && t <= to);
+}
+
+// Classifies every kept point as flying or not and records the flight time
+// windows used by the stats. Returns the kept points with their flags.
+function detectFlights(data) {
+    const kept = [];
+    let prev = null;
+    data.features.forEach(feature => {
+        if (!feature.geometry?.coordinates) return;
+        //markers with velocity of zero and high acceleration tend to be very inaccurate, skip them
+        if (feature.properties.acc >= 100) return;
+        const [lng, lat] = feature.geometry.coordinates;
+        const jump = prev ? getDistanceFromLatLonInKm(prev.lat, prev.lng, lat, lng) : 0;
+        if (prev && jump <= minDistanceFilter) return;
+        const point = { lat, lng, vel: feature.properties.vel || 0, tst: featureTime(feature), jump };
+        kept.push(point);
+        prev = point;
+    });
+
+    const flying = new Array(kept.length).fill(false);
+    let airborne = false;
+    let lastFastTime = null;
+    kept.forEach((point, i) => {
+        const fast = point.vel > drivingFlyingThresholdKMH;
+        const jumped = point.jump > distanceBetweenPointsFlyingThreshold;
+        if (!airborne && (fast || jumped)) {
+            airborne = true;
+            // Pull the take-off roll into the flight. The point right before a
+            // jump is exempt from the time window: it is the last fix the phone
+            // sent before going quiet in the air, however long the flight was.
+            let ref = point.tst;
+            for (let j = i - 1; j >= 0 && !flying[j]; j--) {
+                if (kept[j].vel <= FLIGHT_EXIT_KMH) break;
+                const beforeJump = jumped && j === i - 1;
+                if (!beforeJump && ref - kept[j].tst > FLIGHT_LOOKBACK_SECONDS) break;
+                flying[j] = true;
+                ref = kept[j].tst;
+            }
+        } else if (airborne && !fast && !jumped) {
+            const stale = lastFastTime !== null && point.tst - lastFastTime > FLIGHT_STALE_SECONDS;
+            if (point.vel < FLIGHT_EXIT_KMH || stale) airborne = false;
+        }
+        if (fast || jumped) lastFastTime = point.tst;
+        flying[i] = airborne;
+    });
+
+    const intervals = [];
+    let i = 0;
+    while (i < kept.length) {
+        let j = i;
+        while (j < kept.length && flying[j] === flying[i]) j++;
+        if (flying[i]) intervals.push([kept[i].tst, kept[j - 1].tst]);
+        i = j;
+    }
+    lastFlightIntervals = intervals;
+
+    return { kept, flying };
+}
+
 async function filterData(data) {
     let start = Date.now();
 
-    let drivingLatlngs = []; // Array to hold driving coordinates
-    let flyingLatlngs = []; // Array to hold flying coordinates
+    const { kept, flying } = detectFlights(data);
 
-    let currentMode = null; // Tracks the current mode: 'driving' or 'flying'
-    let currentSegment = []; // Holds the current segment of points
-
-    console.log(data.features[0]);
-
-    data.features.forEach(feature => {
-        if (feature.geometry?.coordinates) {
-            const [lng, lat] = feature.geometry.coordinates;
-            // Add coordinates to the array
-
-            //markers with velocity of zero and high acceleration tend to be very inaccurate, skip them
-            if (feature.properties.acc < 100) { //feature.properties.vel > 5 || feature.properties.vel == 0 && feature.properties.acc < 100
-
-
-                if (currentSegment.length > 0) {
-                    const lastPoint = currentSegment[currentSegment.length - 1];
-                    const dist = getDistanceFromLatLonInKm(lastPoint[0], lastPoint[1], lat, lng);
-
-                    // Only add the point if it's farther than the minimum distance
-                    if (dist > minDistanceFilter) {
-                        let isFlying = feature.properties.vel > drivingFlyingThresholdKMH;
-
-                        if (dist > distanceBetweenPointsFlyingThreshold) {
-                            isFlying = true; // Force flying mode if distance is greater than 100 km
-                        }
-
-                        // Check if the mode has changed
-                        if (
-                            (isFlying && currentMode !== 'flying') ||
-                            (!isFlying && currentMode !== 'driving')
-                        ) {
-                            // Save the current segment to the appropriate array
-
-                            //skip segments with only one point
-                            if (currentSegment.length > 1) {
-                                if (currentMode === 'flying') {
-                                    flyingLatlngs.push(currentSegment);
-                                } else if (currentMode === 'driving') {
-                                    drivingLatlngs.push(currentSegment);
-                                }
-
-                                // Start a new segment
-                                currentSegment = [];
-                                currentMode = isFlying ? 'flying' : 'driving';
-                            }
-                        }
-
-                        // Add the point to the current segment
-                        currentSegment.push([lat, lng]);
-                    }
-                } else {
-                    // Always add the first point
-                    currentSegment.push([lat, lng]);
-                    currentMode = feature.properties.vel > drivingFlyingThresholdKMH ? 'flying' : 'driving';
-                }
-            }
+    const drivingLatlngs = [];
+    const flyingLatlngs = [];
+    let i = 0;
+    while (i < kept.length) {
+        const mode = flying[i];
+        let j = i;
+        while (j < kept.length && flying[j] === mode) j++;
+        const group = kept.slice(i, j);
+        if (mode) {
+            // bridge to the road at both ends so the flight connects to the drives
+            if (i > 0) group.unshift(kept[i - 1]);
+            if (j < kept.length) group.push(kept[j]);
         }
-    });
-
-    // Save the last segment to the appropriate array
-    if (currentSegment.length > 0) {
-        if (currentMode === 'flying') {
-            flyingLatlngs.push(currentSegment);
-        } else if (currentMode === 'driving') {
-            drivingLatlngs.push(currentSegment);
-        }
+        const latlngs = group.map(p => [p.lat, p.lng]);
+        if (latlngs.length > 1) (mode ? flyingLatlngs : drivingLatlngs).push(latlngs);
+        i = j;
     }
 
     let timeTaken = Date.now() - start;
@@ -309,86 +359,101 @@ function getHighestVelocity() {
 }
 
 /**
- * Calculates total distance and area of the route and displays it on the page
- * @param {*} user
- * @param {*} device
- * @returns
+ * Adds the linestring's length to the running distance total. Flight segments
+ * still count as a progress-bar task but are kept out of the total.
  */
-function getLinestringStats(lineString) {
+function flightsIncluded() {
+    return typeof getFlightsShown === 'function' && getFlightsShown();
+}
+
+function refreshStats() {
+    const incl = flightsIncluded();
+    showDistanceStat(distanceKm + (incl ? flightDistanceKm : 0), incl);
+    showAreaStat(area + (incl ? flightArea : 0));
+    showAltitudeStat(incl ? Math.max(highestAltitude, flightHighestAltitude) : highestAltitude);
+    showSpeedStat(incl ? Math.max(highestVelocity, flightHighestVelocity) : highestVelocity, drivingFlyingThresholdKMH);
+}
+
+function getLinestringStats(lineString, isFlight = false) {
     let start = Date.now();
 
-    // Convert distance to kilometers
-    distanceKm += turf.length(lineString, { units: 'kilometers' }); // Total distance in kilometers
-
-    document.getElementById('totalDist').innerHTML = "<p>" + Math.round(distanceKm * 100) / 100 + "km or " + Math.round((distanceKm / 1.609) * 100) / 100 + "mi</p>";
+    const km = turf.length(lineString, { units: 'kilometers' });
+    if (isFlight) {
+        flightDistanceKm += km;
+    } else {
+        distanceKm += km;
+    }
+    refreshStats();
 
     let timeTaken = Date.now() - start;
     completeTask("linestring stats", timeTaken);
 }
 
-function getBufferStats(buffer) {
+function getBufferStats(buffer, isFlight = false) {
     let start = Date.now();
 
-    // Calculate the total area of the route
-    area += turf.area(buffer) / 1e6; // Convert m² to km²
-
-    document.getElementById('totalArea').innerHTML = "<p>" + Math.round(area * 100) / 100 + "km² or " + Math.round((area / 1.609) * 100) / 100 + "mi²</p>";
-
-    document.getElementById('totalAreaPct').innerHTML = "<p>" + area / 863428 + "%" + "</p>";
+    const km2 = turf.area(buffer) / 1e6;
+    if (isFlight) {
+        flightArea = km2;
+    } else {
+        area += km2;
+    }
+    refreshStats();
 
     let timeTaken = Date.now() - start;
     completeTask("buffer stats", timeTaken);
 }
 
-function resetCoverageStats() {
-    distanceKm = 0;
-    area = 0;
-    document.getElementById('totalDist').innerHTML = "<p>0km or 0mi</p>";
-    document.getElementById('totalArea').innerHTML = "<p>0km² or 0mi²</p>";
-    document.getElementById('totalAreaPct').innerHTML = "<p>0%</p>";
+function recordFlightBuffer(buffer) {
+    flightArea = buffer ? turf.area(buffer) / 1e6 : 0;
+    refreshStats();
 }
 
+function resetAreaStats() {
+    area = 0;
+    flightArea = 0;
+    refreshStats();
+}
+
+function resetCoverageStats() {
+    distanceKm = 0;
+    flightDistanceKm = 0;
+    resetAreaStats();
+}
+
+function accumulatePointStats(data) {
+    let fastestDrivingPoint = null;
+    data.features.forEach(feature => {
+        const { alt, vel } = feature.properties;
+        if (isFlightFeature(feature)) {
+            if (alt > flightHighestAltitude) flightHighestAltitude = alt;
+            if (vel > flightHighestVelocity) flightHighestVelocity = vel;
+        } else {
+            if (alt > highestAltitude) highestAltitude = alt;
+            if (vel > highestVelocity) {
+                highestVelocity = vel;
+                fastestDrivingPoint = feature;
+            }
+        }
+    });
+    if (fastestDrivingPoint) {
+        const p = fastestDrivingPoint.properties;
+        console.log(`Top driving speed ${p.vel} km/h at ${p.isotst}`, fastestDrivingPoint.geometry.coordinates);
+    }
+}
 
 function getOwntracksStats(data) {
     let start = Date.now();
 
-    // Reset globals before calculating
     highestAltitude = 0;
     highestVelocity = 0;
-
-    data.features.forEach(feature => {
-        if (feature.properties.alt > highestAltitude) {
-            highestAltitude = feature.properties.alt;
-        }
-        if (feature.properties.vel > highestVelocity) {
-            highestVelocity = feature.properties.vel;
-        }
-    });
-
-
-    //highest altitude
-    document.getElementById('highestAltitude').innerHTML = "<p>" + highestAltitude + "m or " + Math.round((highestAltitude * 3.281) * 100) / 100 + "ft</p>";
-
-    //highest velocity
-    document.getElementById('highestVelocity').innerHTML = "<p>" + highestVelocity + "kmh or " + Math.round((highestVelocity / 1.609) * 100) / 100 + "mph</p>";
+    flightHighestAltitude = 0;
+    flightHighestVelocity = 0;
+    accumulatePointStats(data);
+    refreshStats();
 
     let timeTaken = Date.now() - start;
     completeTask("OwnTracks stats", timeTaken);
-}
-
-/**
- * Restore metrics from cache and update DOM
- */
-function setCachedMetrics(metrics) {
-    if (metrics) {
-        highestAltitude = metrics.highestAltitude || 0;
-        highestVelocity = metrics.highestVelocity || 0;
-        distanceKm = metrics.totalDistance || 0;
-
-        document.getElementById('highestAltitude').innerHTML = "<p>" + highestAltitude + "m or " + Math.round((highestAltitude * 3.281) * 100) / 100 + "ft</p>";
-        document.getElementById('highestVelocity').innerHTML = "<p>" + highestVelocity + "kmh or " + Math.round((highestVelocity / 1.609) * 100) / 100 + "mph</p>";
-        document.getElementById('totalDist').innerHTML = "<p>" + Math.round(distanceKm * 100) / 100 + "km or " + Math.round((distanceKm / 1.609) * 100) / 100 + "mi</p>";
-    }
 }
 
 /**
@@ -398,19 +463,37 @@ function setCachedMetrics(metrics) {
 function getOwntracksStatsIncremental(data) {
     let start = Date.now();
 
-    // Don't reset - compare against existing cached values
-    data.features.forEach(feature => {
-        if (feature.properties.alt > highestAltitude) {
-            highestAltitude = feature.properties.alt;
-        }
-        if (feature.properties.vel > highestVelocity) {
-            highestVelocity = feature.properties.vel;
-        }
-    });
-
-    document.getElementById('highestAltitude').innerHTML = "<p>" + highestAltitude + "m or " + Math.round((highestAltitude * 3.281) * 100) / 100 + "ft</p>";
-    document.getElementById('highestVelocity').innerHTML = "<p>" + highestVelocity + "kmh or " + Math.round((highestVelocity / 1.609) * 100) / 100 + "mph</p>";
+    accumulatePointStats(data);
+    refreshStats();
 
     let timeTaken = Date.now() - start;
     completeTask("OwnTracks stats (incremental)", timeTaken);
+}
+
+function currentMetrics() {
+    return {
+        highestAltitude,
+        highestVelocity,
+        totalDistance: distanceKm,
+        flight: {
+            highestAltitude: flightHighestAltitude,
+            highestVelocity: flightHighestVelocity,
+            totalDistance: flightDistanceKm
+        }
+    };
+}
+
+/**
+ * Restore metrics from cache and update DOM
+ */
+function setCachedMetrics(metrics) {
+    if (!metrics) return;
+    const flight = metrics.flight || {};
+    highestAltitude = metrics.highestAltitude || 0;
+    highestVelocity = metrics.highestVelocity || 0;
+    distanceKm = metrics.totalDistance || 0;
+    flightHighestAltitude = flight.highestAltitude || 0;
+    flightHighestVelocity = flight.highestVelocity || 0;
+    flightDistanceKm = flight.totalDistance || 0;
+    refreshStats();
 }
