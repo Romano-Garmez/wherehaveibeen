@@ -27,26 +27,29 @@ Create a `.env` file with:
 
 **Backend (Flask - `app.py`):**
 - Session-based authentication storing OwnTracks credentials
-- Proxy endpoints for OwnTracks API (`/locations`, `/usersdevices`)
+- Proxy endpoints for the recorder (`/locations`, `/usersdevices`) and for the
+  user management API's per-user compute (`/me/track`, `/me/heatmap`, `/all-roads`)
 - Settings persistence in Flask session (`/save_settings`, `/get_settings`)
 
 **Frontend (Vanilla JS in `static/js/`):**
-- `manageData.js` - Data fetching, filtering, and processing pipeline
-- `drawOnMap.js` - Route calculation and Leaflet map rendering
+- `manageData.js` - Builds the `/me/*` query from the UI, polls while the server computes (202), holds the returned stats for the Flights toggle
+- `drawOnMap.js` - Leaflet rendering of the server's corridors, flight lines and heat cells
 - `logIn.js` - Authentication handling
-- `cacheManager.js` - IndexedDB caching with settings validation
 - `progressBar.js` - Progress strip and reload-chip state
 - `statsPanel.js` - Stats ribbon; single source of truth for stat labels and unit formatting (imperial first, metric underneath)
 
 **Data Flow:**
 ```
-OwnTracks Server → Flask Backend (proxy/auth) → Frontend JS → Leaflet Map
-                                              → IndexedDB Cache
+OwnTracks Recorder → WhereHaveIBeen-API (/api/me/track, /api/me/heatmap: flight
+detection, thinning, buffer, dissolve, stats; cached per user on the Mini)
+                   → Flask Backend (/me/track, /me/heatmap proxy with session auth)
+                   → Frontend JS → Leaflet Map
 ```
 
-**Routing Strategies (based on point count):**
-- Simple: straight segments between fixes, buffered with Turf.js
-- NoRoute: Point filtering only (very large datasets)
+All geometry and stats are computed server-side in the WhereHaveIBeen-API repo
+(`track.py`); the browser only renders. A cold all-time request answers `202`
+with `Retry-After` while the server computes and the client polls. Turf.js is
+loaded only on `/about` for its illustration.
 
 ## Key Libraries
 
@@ -179,15 +182,17 @@ is blocked. The proxy validates coordinates and caches tiles in memory.
 `none` for line-only), `w`/`h` (map area px, default 800×400 — must match the SVG
 `viewBox` in the markup).
 
-### Routing Strategy
+### Per-user compute proxy
 
-Routes are calculated differently based on GPS point count:
+| Endpoint | Proxies To | Description |
+|----------|------------|-------------|
+| `/me/track` | `/api/me/track` | Buffered driving corridor, flight lines and corridor, stats |
+| `/me/heatmap` | `/api/me/heatmap` | Visit-frequency grid `[gx, gy, count]` |
+| `/all-roads` | `/api/aggregate-roads` | Anonymised all-users shape with `area_km2` etc. |
 
-| Point Count | Strategy | Description |
-|-------------|----------|-------------|
-| < 3000 | Simple | Direct line connections via Turf.js |
-| 3000 - 5000 | NoRoute | Point filtering, 10m minimum spacing |
-| > 5000 | NoRoute | Point filtering, 100m minimum spacing |
+Forwarded query parameters: `from`, `to` (ISO 8601 UTC), `device`, `buffer_m`,
+`refresh`. No `user` parameter exists; the API serves the session's account
+only. `202` and `400` pass through; `401`/`403` upstream become `401` here.
 
 ### Frontend Authentication Flow
 
@@ -208,27 +213,23 @@ Page Load (index.html)
 
 **Key Frontend Files:**
 - `logIn.js` - Session validation, settings load/save
-- `manageData.js` - Data fetching from `/locations`, filtering, statistics
-- `drawOnMap.js` - Route calculation (Simple/NoRoute), Leaflet rendering
-- `cacheManager.js` - IndexedDB cache management
+- `manageData.js` - `/me/*` requests with 202 polling, stats state
+- `drawOnMap.js` - Leaflet rendering
 
-### IndexedDB Caching
+### Caching
 
-The frontend caches processed route data in IndexedDB to avoid re-fetching and re-processing.
-
-**Cache Structure:**
-```javascript
-{
-  driving: { buffer: GeoJSON, timestamp, startTimestamp },
-  flying: { buffer: GeoJSON, timestamp, startTimestamp },
-  settings: { bufferSize },
-  metrics: { highestAltitude, highestVelocity, totalDistance }
-}
-```
-
-**Cache Invalidation Triggers:**
-- Buffer size (`circleSize`) setting changed
-- Manual cache clear by user
+There is no application-level browser cache. The API keeps one entry per
+(user, devices, buffer, range) on the Mini and extends open-ended (all-time)
+entries incrementally; closed ranges are recomputed after 24 h. Every `/me/*`
+and `/all-roads` response relays the API's `ETag` and
+`Cache-Control: private, no-cache`, and the proxy forwards `If-None-Match`,
+so the browser's HTTP cache revalidates each load and gets a `304` when the
+server confirms nothing changed. The page also keeps the last `/me/track`
+response in memory for a minute so heatmap mode can reuse it for the stats
+ribbon; Reload and "Recompute on server" bypass that. The Configure panel's
+"Server" tab shows `computed_at` / `latest_tst` and offers "Recompute on
+server" (`refresh=1`). On load the page deletes the legacy IndexedDB store
+`WhereHaveIBeenCache` from earlier versions.
 
 ---
 

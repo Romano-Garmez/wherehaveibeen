@@ -54,6 +54,22 @@ async function updateProgressBar() {
     await new Promise(resolve => setTimeout(resolve, 0));
 }
 
+/**
+ * Show progress reported by the server while it computes (a 202 body with
+ * {stage, done, total}); independent of the local task counter.
+ */
+function showServerProgress(done, total, message) {
+    const bar = document.getElementById("progressBar");
+    const inner = document.getElementById("progressBarInner");
+    if (!bar || !inner) return;
+    const pct = total > 0 ? Math.min(99, Math.round((done / total) * 100)) : 0;
+    inner.style.width = pct + "%";
+    bar.classList.remove("is-done");
+    setProgressMessage(message);
+    const percentEl = document.getElementById("progressBarPercent");
+    if (percentEl) percentEl.textContent = total > 0 ? done + " of " + total + " · " + pct + "%" : "";
+}
+
 function setProgressBarNumSteps(num) {
     progressBarNumSteps = num;
 }

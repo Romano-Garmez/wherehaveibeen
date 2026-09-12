@@ -1,6 +1,7 @@
 import sys
 from flask import (
     Flask,
+    Response,
     redirect,
     render_template,
     jsonify,
@@ -250,6 +251,82 @@ def get_locations():
         return jsonify({"error": INTERNAL_ERROR_MESSAGE}), 500
 
 
+# Query parameters forwarded to the per-user endpoints. `user` is deliberately
+# not among them: the API only ever serves the authenticated account.
+ME_PARAMS = ("from", "to", "device", "buffer_m", "refresh")
+
+
+def _conditional_headers():
+    """Forward the browser's If-None-Match so the API can answer 304."""
+    tag = request.headers.get("If-None-Match")
+    return {"If-None-Match": tag} if tag else {}
+
+
+def _relay_cacheable(upstream):
+    """Relay a 200 body or a 304 together with the validators the browser
+    needs to revalidate next time (ETag + Cache-Control: private, no-cache)."""
+    if upstream.status_code == 304:
+        resp = Response(status=304)
+    else:
+        resp = Response(upstream.content, status=200, mimetype="application/json")
+    for header in ("ETag", "Cache-Control"):
+        if header in upstream.headers:
+            resp.headers[header] = upstream.headers[header]
+    return resp
+
+
+def _proxy_me(path):
+    """
+    Proxy /api/me/* on the user management API with the session credentials.
+    Passes 202 (still computing) and 400 (bad parameters) through so the
+    client can poll or show the message; the 200 body is relayed as-is because
+    the track GeoJSON can run to megabytes.
+    """
+    username = session.get("username")
+    password = session.get("password")
+    if not username:
+        return jsonify({"error": "Not logged in."}), 401
+
+    params = {key: request.args[key] for key in ME_PARAMS if request.args.get(key)}
+    try:
+        response = requests.get(
+            OWNTRACKS_URL + path,
+            auth=HTTPBasicAuth(username, password),
+            params=params,
+            headers=_conditional_headers(),
+            timeout=120,
+        )
+    except requests.Timeout:
+        return jsonify({"error": "The server took too long to answer, try again."}), 504
+    except requests.RequestException as err:
+        app.logger.error(f"{path}: request failed: {err}")
+        return jsonify({"error": INTERNAL_ERROR_MESSAGE}), 502
+
+    if response.status_code in (401, 403):
+        return jsonify({"error": "Not logged in."}), 401
+    if response.status_code == 202:
+        # The body carries the server's progress ({stage, done, total}).
+        resp = Response(response.content, status=202, mimetype="application/json")
+        resp.headers["Retry-After"] = response.headers.get("Retry-After", "1")
+        return resp
+    if response.status_code == 400:
+        return jsonify(response.json()), 400
+    if response.status_code in (200, 304):
+        return _relay_cacheable(response)
+    app.logger.error(f"{path}: upstream returned {response.status_code}")
+    return jsonify({"error": INTERNAL_ERROR_MESSAGE}), 502
+
+
+@app.route("/me/track")
+def me_track():
+    return _proxy_me("/api/me/track")
+
+
+@app.route("/me/heatmap")
+def me_heatmap():
+    return _proxy_me("/api/me/heatmap")
+
+
 @app.route("/everyone")
 def everyone():
     """
@@ -282,12 +359,13 @@ def get_all_roads():
         response = requests.get(
             OWNTRACKS_URL + "/api/aggregate-roads",
             auth=HTTPBasicAuth(username, password),
+            headers=_conditional_headers(),
             timeout=120,
         )
         if response.status_code == 503:
             return jsonify({"error": "warming"}), 503
         response.raise_for_status()
-        return jsonify(response.json())
+        return _relay_cacheable(response)
     except requests.Timeout:
         return jsonify({"error": "Aggregate computation timed out, try again."}), 504
     except requests.HTTPError:
@@ -306,10 +384,14 @@ def get_users_devices():
         # per-user isolation); the client-side filter below stays as defence in
         # depth.
         username = session.get("username")
+        # No session: the page probes this on every load to decide whether to
+        # show the login form, so answer without a round trip or an error log.
+        if not username:
+            return jsonify({"error": "Not logged in."}), 401
         response = requests.get(
             OWNTRACKS_URL + "/api/0/last",
-            auth=HTTPBasicAuth(session.get("username"), session.get("password")),
-            params={"user": username.lower()} if username else None,
+            auth=HTTPBasicAuth(username, session.get("password")),
+            params={"user": username.lower()},
         )
         response.raise_for_status()
         data = response.json()

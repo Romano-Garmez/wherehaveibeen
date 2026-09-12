@@ -58,16 +58,17 @@
     map.attributionControl.setPrefix(false);
     addBaseLayer();
 
+    // Uses the server's all-time track at the default 500 m corridor, the same
+    // width the aggregate is drawn with. A 202 (still computing) is skipped
+    // quietly; the card simply doesn't show on that visit.
     async function showYourShare(everyoneAreaKm2) {
         if (!currentUser || !everyoneAreaKm2) return;
-        const device = localStorage.getItem('whib_device');
-        if (!device) return;
         try {
-            await initDB();
-            const cache = await getCache(currentUser, device);
-            const mine = cache?.driving?.buffer;
+            const resp = await fetch('/me/track');
+            if (!resp.ok) return;
+            const mine = (await resp.json()).stats?.driving?.area_km2 || 0;
             if (!mine) return;
-            const pct = (turf.area(mine) / 1e6) / everyoneAreaKm2 * 100;
+            const pct = mine / everyoneAreaKm2 * 100;
             document.getElementById('sharePct').textContent = formatNumber(pct, pct < 10 ? 1 : 0) + "%";
             document.getElementById('shareCard').hidden = false;
         } catch (err) {
@@ -106,19 +107,12 @@
             renderCachedBuffer(buffer, "blue");
 
             // The aggregate is anonymised by design: properties carry only
-            // max_vel, max_alt and distance_km (see wherehaveibeen-api/aggregate.py).
+            // max_vel, max_alt, distance_km and area_km2 (see wherehaveibeen-api/aggregate.py).
             const props = buffer.properties || {};
-
-            resetCoverageStats();
-            getBufferStats(buffer);
-            setCachedMetrics({
-                highestAltitude: props.max_alt || 0,
-                highestVelocity: props.max_vel || 0,
-                totalDistance: props.distance_km || 0
-            });
+            showEveryoneStats(props);
 
             finishProgressBar("Complete — merged shape from server");
-            showYourShare(turf.area(buffer) / 1e6);
+            showYourShare(props.area_km2);
         } catch (err) {
             console.error("Everyone's roads load failed:", err);
             setProgressBarError();

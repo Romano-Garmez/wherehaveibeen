@@ -63,7 +63,7 @@
                 <div class="cfg__tabs" role="tablist">
                     <button type="button" class="cfg__tab is-active" data-tab="data" onclick="showConfigTab('data')">Data</button>
                     <button type="button" class="cfg__tab" data-tab="map" onclick="showConfigTab('map')">Map</button>
-                    <button type="button" class="cfg__tab" data-tab="cache" onclick="showConfigTab('cache')">Cache</button>
+                    <button type="button" class="cfg__tab" data-tab="cache" onclick="showConfigTab('cache')">Server</button>
                     <button type="button" class="cfg__tab" data-tab="account" onclick="showConfigTab('account')">Account</button>
                 </div>
 
@@ -127,7 +127,7 @@
 
                         <div>
                             <h5 class="field__label field__label--tight">Buffer size</h5>
-                            <p class="field__hint">How wide the explored area around each road is drawn. Larger values take longer and clear your cache.</p>
+                            <p class="field__hint">How wide the explored area around each road is drawn. The server computes each width once and keeps it.</p>
                             <div class="stepper-row">
                                 <div class="stepper">
                                     <button type="button" class="stepper__btn" onclick="stepBuffer(-1)" aria-label="Smaller buffer">−</button>
@@ -141,18 +141,18 @@
                     </div>
 
                     <div class="cfg__pane" id="cfgPaneCache" hidden>
-                        <p class="field__hint" style="margin:0">Processed shapes are stored in your browser so return visits only process new GPS data.</p>
+                        <p class="field__hint" style="margin:0">Your roads are computed and cached on the server, so every device sees the same shapes and numbers. Return visits only process new GPS fixes.</p>
                         <div class="cards">
                             <div class="card">
-                                <div class="card__label">Cached range</div>
-                                <div class="card__value" id="cacheDateRange">No cached data</div>
+                                <div class="card__label">Computed</div>
+                                <div class="card__value" id="cacheComputedAt">—</div>
                             </div>
                             <div class="card">
-                                <div class="card__label">Storage</div>
-                                <div class="card__value" id="cacheSize">0 Bytes</div>
+                                <div class="card__label">Latest fix</div>
+                                <div class="card__value" id="cacheLatestFix">—</div>
                             </div>
                         </div>
-                        <button type="button" class="btn btn--warning-outline btn--start" onclick="clearCurrentCache()">Clear cache</button>
+                        <button type="button" class="btn btn--warning-outline btn--start" onclick="recomputeOnServer()">Recompute on server</button>
                     </div>
 
                     <div class="cfg__pane" id="cfgPaneAccount" hidden>
@@ -304,9 +304,6 @@
     map.attributionControl.setPrefix(false);
     addBaseLayer();
 
-    // Track if we're using cached data for this load
-    let usingCache = false;
-
     // Track if user has applied a custom time filter this session
     let customTimeFilterApplied = false;
 
@@ -330,14 +327,8 @@
     }
 
     function reloadData() {
+        trackMemo = null;
         resetMap();
-    }
-
-    function getCurrentSettings() {
-        return {
-            bufferSize: parseFloat(document.getElementById('circleSize').value) || 0.5,
-            schema: CACHE_SCHEMA_VERSION
-        };
     }
 
     // ---- View mode ---------------------------------------------------------
@@ -551,7 +542,8 @@
 
     const BUFFER_STEP_MI = 0.1;
     const BUFFER_MIN_MI = 0.1;
-    const BUFFER_MAX_MI = 6;
+    // The server clamps the corridor at 5000 m.
+    const BUFFER_MAX_MI = 3.1;
     let bufferApplyTimer = null;
 
     function getBufferKm() {
@@ -604,574 +596,117 @@
     });
 
     // ---- Data pipeline -----------------------------------------------------
+    // Everything heavy runs on the server; manageData.js holds the request
+    // helpers and drawOnMap.js the rendering.
+
+    let pendingRefresh = false;
+
+    // The last track response, reused when heatmap mode needs the stats for
+    // the same query moments later. Reload and Recompute bypass it.
+    const TRACK_MEMO_MS = 60 * 1000;
+    let trackMemo = null;
+
+    async function loadTrack(refresh) {
+        const params = buildTrackQuery({ refresh });
+        const query = buildTrackQuery().toString();
+        if (!refresh && trackMemo && trackMemo.query === query && Date.now() - trackMemo.at < TRACK_MEMO_MS) {
+            completeTask("track from memory", 0);
+            return trackMemo.data;
+        }
+        const data = await fetchServerResult('/me/track', params, "fetching track");
+        trackMemo = { query, at: Date.now(), data };
+        return data;
+    }
+
+    function recomputeOnServer() {
+        pendingRefresh = true;
+        closeConfig();
+        resetMap();
+    }
 
     async function runTasks() {
-        const user = getCurrentUsername();
-        const device = document.getElementById('deviceBox').value;
+        const refresh = pendingRefresh;
+        pendingRefresh = false;
+        if (refresh) trackMemo = null;
+
+        if (!checkIfLoggedIn()) {
+            openForm();
+            return;
+        }
+        closeForm();
+
+        const heat = getMapMode() === 'heatmap';
+        setProgressBarNumSteps(heat ? 4 : 3);
+        updateProgressBar();
 
         try {
-            await initDB();
-        } catch (err) {
-            console.log("IndexedDB not available, proceeding without cache:", err);
-        }
-
-        // Heatmap mode renders raw points directly and bypasses the buffer cache
-        // (the cache stores route polygons, not raw GPS points).
-        if (getMapMode() === 'heatmap') {
-            return runHeatmap(user, device);
-        }
-
-        let cacheData = null;
-        let cacheValid = false;
-        const currentSettings = getCurrentSettings();
-
-        if (isAllTimeQuery()) {
-            try {
-                cacheData = await getCache(user, device);
-                if (cacheData) {
-                    if (!validateCacheData(cacheData)) {
-                        console.log("Cache data corrupted, clearing and recalculating");
-                        await clearCache(user, device);
-                        cacheData = null;
-                    } else {
-                        cacheValid = validateCacheSettings(
-                            cacheData.settings,
-                            currentSettings.bufferSize
-                        );
-
-                        if (!cacheValid) {
-                            console.log("Cache invalidated due to settings change");
-                            cacheData = null;
-                        }
-                    }
-                }
-            } catch (err) {
-                console.error("Error checking cache:", err);
-                cacheData = null;
+            if (heat) {
+                await runHeatmap(refresh);
+            } else {
+                await runRoutes(refresh);
             }
-        }
-
-        if (cacheData && cacheValid) {
-            await runTasksWithCache(cacheData, user, device, currentSettings);
-        } else {
-            await runTasksFresh(user, device, currentSettings);
+        } catch (err) {
+            console.error("Load failed:", err);
+            setProgressBarError();
+            setProgressMessage(err.message || "Couldn't load location data");
         }
     }
 
-    /**
-     * Run tasks using cached data - only fetch and calculate new data since cache timestamp
-     */
-    async function runTasksWithCache(cacheData, user, device, currentSettings) {
-        usingCache = true;
-        console.log("Using cached data, fetching only new data");
+    async function runRoutes(refresh) {
+        setProgressMessage("Loading your roads...");
+        const track = await loadTrack(refresh);
+        applyTrackResult(track);
 
-        const cacheTimestamp = cacheData.driving?.timestamp || cacheData.flying?.timestamp;
-        if (!cacheTimestamp) {
-            console.log("No valid timestamp in cache, falling back to fresh load");
-            return runTasksFresh(user, device, currentSettings);
-        }
+        setProgressMessage("Drawing...");
+        renderCachedBuffer(track.driving, "blue");
+        renderCachedBuffer(track.flights_buffer, "red");
+        renderFlightLines(track.flights);
+        completeTask("drawing", 0);
 
+        finishProgressBar(track.latest_tst ? "Complete" : "No data available");
+    }
+
+    // The heatmap endpoint only carries the grid, so the stats ribbon is fed
+    // from the track endpoint at the same time (a warm entry answers in ~2 s).
+    async function runHeatmap(refresh) {
+        setProgressMessage("Loading your heatmap...");
+        const [heat, track] = await Promise.all([
+            fetchServerResult('/me/heatmap', buildTrackQuery({ includeBuffer: false, refresh }), "fetching heatmap"),
+            loadTrack(refresh),
+        ]);
+        applyTrackResult(track);
+
+        setProgressMessage("Drawing...");
+        renderHeatCells(heat.cells, heat.cell_deg);
+
+        finishProgressBar(heat.cells.length ? "Complete" : "No data available");
+    }
+
+    function applyTrackResult(track) {
+        applyServerStats(track.stats);
         if (firstLoad) {
-            const startTimestamp = cacheData.driving?.startTimestamp || cacheData.flying?.startTimestamp;
-            if (startTimestamp) {
-                document.getElementById('startBox').value = toLocalDatetimeInputValue(new Date(startTimestamp));
+            if (track.earliest_tst) {
+                document.getElementById('startBox').value = toLocalDatetimeInputValue(new Date(track.earliest_tst * 1000));
             }
             document.getElementById('endBox').value = toLocalDatetimeInputValue(new Date());
             firstLoad = false;
         }
-
-        setProgressBarNumSteps(5);
-
-        const loggedIn = await checkIfLoggedIn();
-
-        if (!loggedIn) {
-            openForm();
-            return;
-        }
-
-        closeForm();
-        setProgressMessage("Loading from cache...");
-        completeTask("loading from cache", 0);
-        updateProgressBar();
-
-        try {
-            if (cacheData.driving?.buffer) {
-                renderCachedBuffer(cacheData.driving.buffer, "blue");
-                getBufferStats(cacheData.driving.buffer);
-            }
-            if (cacheData.flying?.buffer) {
-                renderCachedBuffer(cacheData.flying.buffer, "red");
-                renderCachedFlightLines(cacheData.flying.lines);
-                recordFlightBuffer(cacheData.flying.buffer);
-            }
-            if (cacheData.metrics) {
-                setCachedMetrics(cacheData.metrics);
-            }
-        } catch (err) {
-            console.error("Cache corruption detected, falling back to fresh load:", err);
-            setProgressMessage("Cache error - recalculating...");
-            try {
-                await clearCache(user, device);
-            } catch (clearErr) {
-                console.error("Failed to clear corrupted cache:", clearErr);
-            }
-            return runTasksFresh(user, device, currentSettings);
-        }
-
-        // Add 1 second to avoid duplicate of last point
-        const cacheDate = new Date(cacheTimestamp);
-        cacheDate.setSeconds(cacheDate.getSeconds() + 1);
-        const newStartDate = cacheDate.toISOString();
-
-        setProgressMessage("Fetching new data...");
-        const newData = await fetchLocations({
-            startDate: newStartDate,
-            taskName: "fetching new data"
-        });
-
-        if (!newData || newData.isEmpty || !newData.features || newData.features.length === 0) {
-            console.log("No new data since cache, using cached buffers only");
-            completeTask("no new data", 0);
-            finishProgressBar("Complete - loaded from cache");
-            updateCacheStatusUI(cacheData, user, device);
-            return;
-        }
-
-        setProgressMessage("Processing new data...");
-        const { drivingLatlngs, flyingLatlngs } = await filterData(newData);
-        updateProgressBar();
-
-        // If no segment has enough points for route calculation, buffer points directly
-        const hasRoutableSegments =
-            drivingLatlngs.some(seg => seg.length > 1) ||
-            flyingLatlngs.some(seg => seg.length > 1);
-        if (!hasRoutableSegments) {
-            let pointBuffer = null;
-            const circleSize = getBufferKm();
-
-            for (const feature of newData.features) {
-                if (feature.geometry?.coordinates) {
-                    const [lng, lat] = feature.geometry.coordinates;
-                    const point = turf.point([lng, lat]);
-                    const buffer = turf.buffer(point, circleSize, { units: 'kilometers', steps: 8 });
-                    if (pointBuffer) {
-                        try { pointBuffer = turf.union(pointBuffer, buffer); }
-                        catch (e) { /* skip overlapping point */ }
-                    } else {
-                        pointBuffer = buffer;
-                    }
-                }
-            }
-
-            if (pointBuffer) {
-                let mergedBuffer = cacheData.driving?.buffer
-                    ? mergeBuffers(cacheData.driving.buffer, pointBuffer)
-                    : pointBuffer;
-                eraseLayers();
-                addBaseLayer();
-                // Area is re-derived from the merged buffer; distance must keep
-                // the cached total and only grow by the new segments.
-                resetAreaStats();
-                renderCachedBuffer(mergedBuffer, "blue");
-                if (cacheData.flying?.buffer) {
-                    renderCachedBuffer(cacheData.flying.buffer, "red");
-                    renderCachedFlightLines(cacheData.flying.lines);
-                    recordFlightBuffer(cacheData.flying.buffer);
-                }
-                getBufferStats(mergedBuffer);
-                getOwntracksStatsIncremental(newData);
-
-                const latestTimestamp = getLatestTimestamp(newData);
-                const newCacheData = {
-                    driving: { buffer: mergedBuffer, timestamp: latestTimestamp || cacheData.driving?.timestamp, startTimestamp: cacheData.driving?.startTimestamp },
-                    flying: cacheData.flying || { buffer: null, timestamp: latestTimestamp, startTimestamp: cacheData.driving?.startTimestamp },
-                    settings: currentSettings,
-                    metrics: currentMetrics()
-                };
-                try { await setCache(user, device, newCacheData); } catch (e) { console.error("Cache update error:", e); }
-                updateCacheStatusUI(newCacheData, user, device);
-            } else {
-                getOwntracksStatsIncremental(newData);
-            }
-
-            finishProgressBar("Complete");
-            return;
-        }
-
-        getOwntracksStatsIncremental(newData);
-
-        let extraTasks = 0;
-        if (drivingLatlngs.length > 0) extraTasks++;
-        if (flyingLatlngs.length > 0) extraTasks++;
-
-        let totalNumSegments = drivingLatlngs.length * 3 + flyingLatlngs.length * 3;
-        setProgressBarNumSteps(totalNumSegments + getNumTasksDone() + extraTasks + 1);
-
-        eraseLayers();
-        addBaseLayer();
-        // Area is re-derived from the merged buffers; distance must keep the
-        // cached total and only grow by the new segments.
-        resetAreaStats();
-
-        let newDrivingBuffer = null;
-        let newFlyingBuffer = null;
-        let finalDrivingBuffer = cacheData.driving?.buffer || null;
-        let finalFlyingBuffer = cacheData.flying?.buffer || null;
-
-        setProgressMessage("Merging with cache...");
-        renderCachedFlightLines(cacheData.flying?.lines);
-        if (drivingLatlngs.length > 0) {
-            newDrivingBuffer = await calculateAndDrawRoute(newData, drivingLatlngs, "blue", {
-                cachedBuffer: cacheData.driving?.buffer
-            });
-            finalDrivingBuffer = newDrivingBuffer;
-        } else if (cacheData.driving?.buffer) {
-            renderCachedBuffer(cacheData.driving.buffer, "blue");
-            getBufferStats(cacheData.driving.buffer);
-        }
-
-        if (flyingLatlngs.length > 0) {
-            newFlyingBuffer = await calculateAndDrawRoute(newData, flyingLatlngs, "red", {
-                cachedBuffer: cacheData.flying?.buffer
-            });
-            finalFlyingBuffer = newFlyingBuffer;
-        } else if (cacheData.flying?.buffer) {
-            renderCachedBuffer(cacheData.flying.buffer, "red");
-            recordFlightBuffer(cacheData.flying.buffer);
-        }
-
-        setProgressMessage("Saving cache...");
-        const latestTimestamp = getLatestTimestamp(newData);
-        const newCacheData = {
-            driving: {
-                buffer: finalDrivingBuffer,
-                timestamp: latestTimestamp || cacheData.driving?.timestamp,
-                startTimestamp: cacheData.driving?.startTimestamp
-            },
-            flying: {
-                buffer: finalFlyingBuffer,
-                lines: getFlightLines(),
-                timestamp: latestTimestamp || cacheData.flying?.timestamp,
-                startTimestamp: cacheData.flying?.startTimestamp
-            },
-            settings: currentSettings,
-            metrics: currentMetrics()
-        };
-
-        try {
-            await setCache(user, device, newCacheData);
-            completeTask("cache updated", 0);
-        } catch (err) {
-            console.error("Failed to update cache:", err);
-        }
-
-        finishProgressBar("Complete");
-        updateCacheStatusUI(newCacheData, user, device);
+        updateServerCacheUI(track);
     }
 
-    /**
-     * Render the visitor-frequency heatmap. Mirrors the route cache flow: on an
-     * all-time query it reuses the cached frequency grid and fetches only new GPS
-     * points since the last cached timestamp, folding their counts into the grid.
-     * Custom date ranges bypass the cache and fetch the full range.
-     */
-    async function runHeatmap(user, device) {
-        console.log("Rendering heatmap view");
-
-        setProgressBarNumSteps(3);
-
-        const loggedIn = await checkIfLoggedIn();
-        if (!loggedIn) {
-            openForm();
-            return;
-        }
-
-        closeForm();
-        updateProgressBar();
-
-        let cache = null;
-        let grid = null;
-        let path = null;
-        if (isAllTimeQuery()) {
-            try {
-                const cached = await getHeatmapCache(user, device);
-                if (cached && validateHeatmapCache(cached)) {
-                    cache = cached;
-                    grid = deserializeHeatGrid(cached.cells);
-                    path = deserializePathGrid(cached.pathCells);
-                }
-            } catch (err) {
-                console.error("Error reading heatmap cache:", err);
-            }
-        }
-        usingCache = !!cache;
-
-        if (cache) {
-            setCachedMetrics(cache.metrics);
-            if (firstLoad) {
-                if (cache.startTimestamp) {
-                    document.getElementById('startBox').value = toLocalDatetimeInputValue(new Date(cache.startTimestamp));
-                }
-                document.getElementById('endBox').value = toLocalDatetimeInputValue(new Date());
-                firstLoad = false;
-            }
-        }
-
-        let newData;
-        if (cache) {
-            const cacheDate = new Date(cache.timestamp);
-            cacheDate.setSeconds(cacheDate.getSeconds() + 1);
-            setProgressMessage("Fetching new data...");
-            newData = await fetchLocations({ startDate: cacheDate.toISOString(), taskName: "fetching new data" });
-        } else {
-            grid = new Map();
-            path = new Set();
-            setProgressMessage("Fetching location data...");
-            newData = await fetchLocations();
-        }
-
-        const hasNewData = newData && !newData.isEmpty && newData.features && newData.features.length > 0;
-        if (!cache && !hasNewData) {
-            console.log("No data available");
-            finishProgressBar("No data available");
-            return;
-        }
-        updateProgressBar();
-
-        let latest = cache?.timestamp || null;
-        let earliest = cache?.startTimestamp || null;
-        let lastPathPoint = cache?.lastPathPoint || null;
-        if (hasNewData) {
-            buildHeatGrid(newData, grid);
-            latest = getLatestTimestamp(newData) || latest;
-            if (!earliest) earliest = getEarliestTimestamp(newData);
-            detectFlights(newData);
-            lastPathPoint = buildPathGrid(newData, path, lastPathPoint);
-            if (cache) {
-                getOwntracksStatsIncremental(newData);
-            } else {
-                getOwntracksStats(newData);
-            }
-        }
-
-        setHeatmapCoverage(pathGridAreaKm2(path, getBufferKm()));
-
-        setProgressMessage("Building heatmap...");
-        renderHeatGrid(grid);
-
-        if (isAllTimeQuery()) {
-            const cacheData = {
-                cells: serializeHeatGrid(grid),
-                pathCells: serializePathGrid(path),
-                lastPathPoint,
-                cellDeg: HEATMAP_CELL_DEG,
-                schema: CACHE_SCHEMA_VERSION,
-                timestamp: latest,
-                startTimestamp: earliest,
-                metrics: currentMetrics()
-            };
-            try {
-                await setHeatmapCache(user, device, cacheData);
-                completeTask("heatmap cache saved", 0);
-            } catch (err) {
-                console.error("Failed to save heatmap cache:", err);
-            }
-            updateHeatmapCacheStatusUI(cacheData, user, device);
-        }
-
-        finishProgressBar(cache && !hasNewData ? "Complete - loaded from cache" : "Complete");
+    function formatServerTime(tst) {
+        if (!tst) return '—';
+        return new Date(tst * 1000).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
     }
 
-    /**
-     * Run tasks from scratch - no cache available or cache invalid
-     */
-    async function runTasksFresh(user, device, currentSettings) {
-        usingCache = false;
-        console.log("Running fresh calculation (no cache)");
-
-        setProgressBarNumSteps(7);
-
-        const loggedIn = await checkIfLoggedIn();
-
-        if (!loggedIn) {
-            openForm();
-            return;
-        }
-
-        closeForm();
-        updateProgressBar();
-
-        setProgressMessage("Fetching location data...");
-        const data = await fetchLocations();
-
-        if (!data || data.isEmpty) {
-            console.log("No data available");
-            finishProgressBar(data ? "No data available" : "Couldn't load location data");
-            return;
-        }
-
-        updateProgressBar();
-
-        setProgressMessage("Processing data...");
-        const { drivingLatlngs, flyingLatlngs } = await filterData(data)
-        updateProgressBar();
-
-        // If no segment has enough points for route calculation, buffer points directly
-        const hasRoutableSegments =
-            drivingLatlngs.some(seg => seg.length > 1) ||
-            flyingLatlngs.some(seg => seg.length > 1);
-        if (!hasRoutableSegments) {
-            setProgressMessage("Showing location points...");
-            let pointBuffer = null;
-            const circleSize = getBufferKm();
-
-            for (const feature of data.features) {
-                if (feature.geometry?.coordinates) {
-                    const [lng, lat] = feature.geometry.coordinates;
-                    const point = turf.point([lng, lat]);
-                    const buffer = turf.buffer(point, circleSize, { units: 'kilometers', steps: 8 });
-                    if (pointBuffer) {
-                        try { pointBuffer = turf.union(pointBuffer, buffer); }
-                        catch (e) { /* skip overlapping point */ }
-                    } else {
-                        pointBuffer = buffer;
-                    }
-                }
-            }
-
-            if (pointBuffer) {
-                renderCachedBuffer(pointBuffer, "blue");
-                getBufferStats(pointBuffer);
-                getOwntracksStats(data);
-
-                if (isAllTimeQuery()) {
-                    const latestTimestamp = getLatestTimestamp(data);
-                    const earliestTimestamp = getEarliestTimestamp(data);
-                    const cacheData = {
-                        driving: { buffer: pointBuffer, timestamp: latestTimestamp, startTimestamp: earliestTimestamp },
-                        flying: { buffer: null, timestamp: latestTimestamp, startTimestamp: earliestTimestamp },
-                        settings: currentSettings,
-                        metrics: currentMetrics()
-                    };
-                    try {
-                        await setCache(user, device, cacheData);
-                    } catch (e) { console.error("Cache save error:", e); }
-                    updateCacheStatusUI(cacheData, user, device);
-                }
-            }
-
-            finishProgressBar("Complete");
-            return;
-        }
-
-        getOwntracksStats(data);
-
-        let extraTasks = 0;
-        if (drivingLatlngs.length > 0) {
-            extraTasks++;
-        }
-        if (flyingLatlngs.length > 0) {
-            extraTasks++;
-        }
-
-        let totalNumSegments = drivingLatlngs.length * 3 + flyingLatlngs.length * 3;
-        const cacheTask = isAllTimeQuery() ? 1 : 0;
-        setProgressBarNumSteps(totalNumSegments + getNumTasksDone() + extraTasks + cacheTask);
-
-        let drivingBuffer = null;
-        let flyingBuffer = null;
-
-        setProgressMessage("Calculating routes...");
-        if (drivingLatlngs.length > 0) {
-            drivingBuffer = await calculateAndDrawRoute(data, drivingLatlngs, "blue");
-        }
-
-        if (flyingLatlngs.length > 0) {
-            flyingBuffer = await calculateAndDrawRoute(data, flyingLatlngs, "red");
-        }
-
-        if (isAllTimeQuery()) {
-            setProgressMessage("Saving cache...");
-            const earliestTimestamp = getEarliestTimestamp(data);
-            const latestTimestamp = getLatestTimestamp(data);
-
-            const cacheData = {
-                driving: {
-                    buffer: drivingBuffer,
-                    timestamp: latestTimestamp,
-                    startTimestamp: earliestTimestamp
-                },
-                flying: {
-                    buffer: flyingBuffer,
-                    lines: getFlightLines(),
-                    timestamp: latestTimestamp,
-                    startTimestamp: earliestTimestamp
-                },
-                settings: currentSettings,
-                metrics: currentMetrics()
-            };
-
-            try {
-                await setCache(user, device, cacheData);
-                completeTask("cache saved", 0);
-                console.log("Buffer cache saved successfully");
-            } catch (err) {
-                console.error("Failed to save cache:", err);
-            }
-
-            updateCacheStatusUI(cacheData, user, device);
-        }
-
-        finishProgressBar("Complete");
+    function updateServerCacheUI(result) {
+        document.getElementById('cacheComputedAt').textContent = formatServerTime(result.computed_at);
+        document.getElementById('cacheLatestFix').textContent = formatServerTime(result.latest_tst);
     }
 
-    async function updateCacheStatusUI(cacheData, user, device) {
-        try {
-            const dateRange = getCacheDateRange(cacheData);
-            const cacheSize = await getCacheSize(user, device);
-
-            document.getElementById('cacheDateRange').textContent = dateRange
-                ? formatCacheDate(dateRange.startDate) + ' – ' + formatCacheDate(dateRange.endDate)
-                : 'No cached data';
-            document.getElementById('cacheSize').textContent = formatBytes(cacheSize);
-        } catch (err) {
-            console.error("Error updating cache status UI:", err);
-        }
-    }
-
-    async function updateHeatmapCacheStatusUI(cacheData, user, device) {
-        try {
-            const cacheSize = await getCacheSize(user, device, '_heatmap');
-
-            document.getElementById('cacheDateRange').textContent = (cacheData && cacheData.startTimestamp && cacheData.timestamp)
-                ? formatCacheDate(new Date(cacheData.startTimestamp)) + ' – ' + formatCacheDate(new Date(cacheData.timestamp))
-                : 'No cached data';
-            document.getElementById('cacheSize').textContent = formatBytes(cacheSize);
-        } catch (err) {
-            console.error("Error updating heatmap cache status UI:", err);
-        }
-    }
-
-    /**
-     * Clear cache for current user/device (both route and heatmap caches)
-     */
-    async function clearCurrentCache() {
-        const user = getCurrentUsername();
-        const device = document.getElementById('deviceBox').value;
-
-        if (confirm('Clear cached data for ' + user + '/' + device + '? This will recalculate everything on next load.')) {
-            try {
-                await clearCache(user, device);
-                await clearHeatmapCache(user, device);
-                console.log("Cache cleared");
-                document.getElementById('cacheDateRange').textContent = 'No cached data';
-                document.getElementById('cacheSize').textContent = '0 Bytes';
-                resetMap();
-            } catch (err) {
-                console.error("Error clearing cache:", err);
-            }
-        }
-    }
+    // Earlier versions cached shapes in the browser; that store is no longer
+    // read, so free the space.
+    try { indexedDB.deleteDatabase('WhereHaveIBeenCache'); } catch (e) { /* no IndexedDB */ }
 
     window.onload = function () {
         syncMapModeUI();
