@@ -769,13 +769,15 @@
                     : pointBuffer;
                 eraseLayers();
                 addBaseLayer();
+                // Area is re-derived from the merged buffer; distance must keep
+                // the cached total and only grow by the new segments.
+                resetAreaStats();
                 renderCachedBuffer(mergedBuffer, "blue");
                 if (cacheData.flying?.buffer) {
                     renderCachedBuffer(cacheData.flying.buffer, "red");
                     renderCachedFlightLines(cacheData.flying.lines);
                     recordFlightBuffer(cacheData.flying.buffer);
                 }
-                resetCoverageStats();
                 getBufferStats(mergedBuffer);
                 getOwntracksStatsIncremental(newData);
 
@@ -807,7 +809,9 @@
 
         eraseLayers();
         addBaseLayer();
-        resetCoverageStats();
+        // Area is re-derived from the merged buffers; distance must keep the
+        // cached total and only grow by the new segments.
+        resetAreaStats();
 
         let newDrivingBuffer = null;
         let newFlyingBuffer = null;
@@ -887,12 +891,14 @@
 
         let cache = null;
         let grid = null;
+        let path = null;
         if (isAllTimeQuery()) {
             try {
                 const cached = await getHeatmapCache(user, device);
                 if (cached && validateHeatmapCache(cached)) {
                     cache = cached;
                     grid = deserializeHeatGrid(cached.cells);
+                    path = deserializePathGrid(cached.pathCells);
                 }
             } catch (err) {
                 console.error("Error reading heatmap cache:", err);
@@ -919,6 +925,7 @@
             newData = await fetchLocations({ startDate: cacheDate.toISOString(), taskName: "fetching new data" });
         } else {
             grid = new Map();
+            path = new Set();
             setProgressMessage("Fetching location data...");
             newData = await fetchLocations();
         }
@@ -933,11 +940,13 @@
 
         let latest = cache?.timestamp || null;
         let earliest = cache?.startTimestamp || null;
+        let lastPathPoint = cache?.lastPathPoint || null;
         if (hasNewData) {
             buildHeatGrid(newData, grid);
             latest = getLatestTimestamp(newData) || latest;
             if (!earliest) earliest = getEarliestTimestamp(newData);
             detectFlights(newData);
+            lastPathPoint = buildPathGrid(newData, path, lastPathPoint);
             if (cache) {
                 getOwntracksStatsIncremental(newData);
             } else {
@@ -945,8 +954,7 @@
             }
         }
 
-        // Distance/area are buffer-derived and don't apply in heatmap mode
-        resetCoverageStats();
+        setHeatmapCoverage(pathGridAreaKm2(path, getBufferKm()));
 
         setProgressMessage("Building heatmap...");
         renderHeatGrid(grid);
@@ -954,6 +962,8 @@
         if (isAllTimeQuery()) {
             const cacheData = {
                 cells: serializeHeatGrid(grid),
+                pathCells: serializePathGrid(path),
+                lastPathPoint,
                 cellDeg: HEATMAP_CELL_DEG,
                 schema: CACHE_SCHEMA_VERSION,
                 timestamp: latest,
