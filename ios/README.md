@@ -37,3 +37,20 @@ A refresh in mock mode answers `computing` once so the progress banner shows.
 Debug builds have a **Use local API** toggle in Settings that points the client
 at `http://localhost:5002`; the ATS exception in `Info.plist` is scoped to
 `localhost`.
+
+## TestFlight
+
+```
+./deploy.sh
+```
+
+Bumps the version (asks which: build/patch/minor/major), archives a Release
+build, exports the `.ipa`, uploads it to App Store Connect, then commits the
+version bump, tags `ios-vX.Y-N`, and creates a GitHub release with the `.ipa`.
+`./deploy.sh help` lists the options (`--no-upload`, `--skip-bump`, `-y`,
+`release`, `set-key`).
+
+Uploading needs an App Store Connect API key in `.deploy.env` (gitignored);
+`./deploy.sh set-key` walks through creating one. The version and build
+number live in `project.yml` and the generated project; `./bump-version.sh`
+keeps both in sync.
