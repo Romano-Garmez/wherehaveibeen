@@ -8,7 +8,7 @@ const DB_VERSION = 1;
 const STORE_NAME = 'bufferCache';
 // Bump whenever the way cached shapes or metrics are derived changes (flight
 // detection, stat classification, stored fields). Older entries are recomputed.
-const CACHE_SCHEMA_VERSION = 6;
+const CACHE_SCHEMA_VERSION = 8;
 
 let db = null;
 
@@ -352,6 +352,7 @@ async function clearHeatmapCache(user, device) {
 function validateHeatmapCache(cache) {
     if (!cache || typeof cache !== 'object') return false;
     if (!Array.isArray(cache.cells)) return false;
+    if (!Array.isArray(cache.pathCells)) return false;
     if (!cache.timestamp) return false;
     // HEATMAP_CELL_DEG is defined in drawOnMap.js (loaded alongside this file)
     if (typeof HEATMAP_CELL_DEG !== 'undefined' && cache.cellDeg !== HEATMAP_CELL_DEG) {

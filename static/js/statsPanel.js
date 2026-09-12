@@ -105,6 +105,13 @@ function showDistanceStat(km, flightsIncluded = false) {
     setStat("totalDist", formatMeasure(km / KM_PER_MI), notes.join(" · "));
 }
 
+function blankDistanceStat() {
+    const def = STAT_DEFINITIONS.find((d) => d.id === "totalDist");
+    const labelEl = document.getElementById("totalDistLabel");
+    if (labelEl) labelEl.textContent = def.label;
+    setStat("totalDist", "—", "not measured in heatmap mode");
+}
+
 function showAreaStat(km2) {
     setStat("totalArea", formatMeasure(km2 / SQKM_PER_SQMI), formatMeasure(km2) + " km²");
     showCoverageStat(km2);

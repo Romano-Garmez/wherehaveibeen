@@ -1,6 +1,3 @@
-// Track all OSRM routing controls so they can be properly removed
-let routingControls = [];
-
 // Track the heatmap layer so it can be cleared on re-render
 let heatLayer = null;
 
@@ -16,7 +13,6 @@ let zoomHookAttached = false;
 const EXPLORED_COLOR = '#3d6ba8';
 const FLIGHT_COLOR = '#e6a23c';
 const FLIGHT_LINE_COLOR = '#c98418';
-const ROAD_LINE_STYLE = { color: '#dc3545', weight: 3, opacity: .9 };
 
 // A 0.5 km buffer is sub-pixel below zoom ~9, so the polygon outline is
 // thickened and the fill darkened as the map zooms out to keep it legible.
@@ -92,14 +88,6 @@ function setFlightLayersVisible(shown) {
     if (shown) raiseFlightLines();
 }
 
-function hasRouteLines() {
-    return routingControls.length > 0;
-}
-
-function notifyLegend() {
-    if (typeof syncLegend === 'function') syncLegend();
-}
-
 function addBaseLayer() {
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -123,21 +111,10 @@ async function calculateAndDrawRoute(data, latlngsList, color, options = {}) {
         if (latlngs.length > 1) {
             let linestring;
 
-            //complex route buffer can only handle 500 points or less
             //simple route buffer can handle any number, but gets pretty slow north of 3000
             //no route is much quicker, but less accurate. Use the minDistance value to adjust accuracy.
             //Points between .01km of each other will be skipped if you pass in .01km
-            //Flights never go through OSRM: there is no road between two airports.
-            if (data.features.length < 500 && !isFlight) {
-                try {
-                    linestring = await calculateComplexRoute(latlngs);
-                } catch (err) {
-                    // OSRM routing failed (e.g., no road route possible over water)
-                    // Fall back to simple route calculation
-                    console.warn("Complex route calculation failed, falling back to simple route:", err.message);
-                    linestring = await calculateSimpleRoute(latlngs);
-                }
-            } else if (data.features.length < 3000) {
+            if (data.features.length < 3000) {
                 linestring = await calculateSimpleRoute(latlngs);
             } else if (data.features.length < 5000) {
                 linestring = await calculateNoRoute(latlngs, 0.01);
@@ -235,65 +212,6 @@ async function calculateSimpleRoute(latlngs) {
     completeTask("simple route calculation", timeTaken);
 
     return lineString;
-}
-
-/**
- * Draw the route on the map using Leaflet Routing Machine.
- * @param {Array} latlngs - The gps points to draw the route with
- */
-async function calculateComplexRoute(latlngs) {
-    console.log("latlngs: ", latlngs);
-    let start = Date.now();
-
-    // Custom OSRM routers are no longer supported — the server always uses its
-    // configured OSRM URL (see /proxy). We no longer send an osrmURL param.
-    const serviceUrl = `/proxy?coords=`;
-
-    console.log("Service URL: ", serviceUrl);
-
-    return new Promise((resolve, reject) => {
-        let control = L.routing.control({
-            waypoints: latlngs
-                .map(function (latlng) {
-                    return L.latLng(latlng[0], latlng[1]);
-                }),
-            router: L.Routing.osrmv1({
-                serviceUrl: serviceUrl,
-                profile: 'car', // or 'bike', 'foot' depending on your needs
-            }),
-            routeWhileDragging: false,
-            addWaypoints: false,
-            fitSelectedRoutes: false,
-            show: false,
-            lineOptions: { styles: [ROAD_LINE_STYLE], addWaypoints: false },
-            createMarker: function () { return null; }, // Disable default marker
-        }).addTo(map);
-
-        // Track this control so it can be removed later
-        routingControls.push(control);
-        notifyLegend();
-
-        control.on('routesfound', function (e) {
-            let routes = e.routes;
-
-            // Create a lineString for buffering based on the actual route
-            let routeCoords = routes[0].coordinates.map(coord => [coord.lng, coord.lat]);
-            let lineString = turf.lineString(routeCoords);
-
-            let timeTaken = Date.now() - start;
-            completeTask("complex route calculation", timeTaken);
-
-            // Resolve the promise with the lineString
-            resolve(lineString);
-        });
-
-        control.on('routingerror', function (error) {
-            try { map.removeControl(control); } catch (e) { /* already gone */ }
-            routingControls = routingControls.filter(c => c !== control);
-            notifyLegend();
-            reject(new Error("Routing failed: " + error.message));
-        });
-    });
 }
 
 /**
@@ -463,6 +381,115 @@ function buildHeatGrid(data, grid = new Map()) {
     return grid;
 }
 
+// Cells along every driving segment, so the heatmap area covers the road between
+// pings the way the routes buffer does. The heat grid itself only holds cells a
+// ping landed in, which leaves most of a fast road uncovered. Flight fixes break
+// the chain, matching how routes mode keeps flights out of the driving buffer.
+// Returns the last chained point so the next incremental batch can join to it.
+function buildPathGrid(data, grid = new Set(), prev = null) {
+    const cell = HEATMAP_CELL_DEG;
+    for (const f of data.features) {
+        const c = f.geometry?.coordinates;
+        if (!c || f.properties.acc >= 100) continue;
+        if (isFlightFeature(f)) { prev = null; continue; }
+        const [lng, lat] = c;
+        if (prev) {
+            const [plat, plng] = prev;
+            const steps = Math.ceil(Math.max(Math.abs(lat - plat), Math.abs(lng - plng)) / cell);
+            for (let i = 1; i < steps; i++) {
+                const t = i / steps;
+                grid.add(Math.round((plat + (lat - plat) * t) / cell) + '_' + Math.round((plng + (lng - plng) * t) / cell));
+            }
+        }
+        grid.add(Math.round(lat / cell) + '_' + Math.round(lng / cell));
+        prev = [lat, lng];
+    }
+    return prev;
+}
+
+function serializePathGrid(grid) {
+    const cells = [];
+    for (const key of grid) {
+        const [gy, gx] = key.split('_');
+        cells.push([Number(gx), Number(gy)]);
+    }
+    return cells;
+}
+
+function deserializePathGrid(cells) {
+    const grid = new Set();
+    if (!Array.isArray(cells)) return grid;
+    for (const [gx, gy] of cells) grid.add(gy + '_' + gx);
+    return grid;
+}
+
+// Ground area within radiusKm of any cell in the path grid, so the figure is
+// comparable to the buffered-route area in routes mode. Works in local km (longitude scaled
+// by cos of the mean latitude): the map is sliced into rows of height
+// radiusKm / ROWS_PER_RADIUS, each visited cell contributes the chord of its disc
+// at every row's midline, and the merged chord lengths give the union area.
+// Rows carry a per-row cos(lat) correction for latitude drift across the region.
+const KM_PER_DEG_LAT = 111.32;
+const ROWS_PER_RADIUS = 8;
+function pathGridAreaKm2(grid, radiusKm) {
+    if (grid.size === 0 || !(radiusKm > 0)) return 0;
+    const rowKm = radiusKm / ROWS_PER_RADIUS;
+
+    let latSum = 0;
+    const cells = [];
+    for (const key of grid) {
+        const [gy, gx] = key.split('_');
+        const lat = Number(gy) * HEATMAP_CELL_DEG;
+        cells.push([lat, Number(gx) * HEATMAP_CELL_DEG]);
+        latSum += lat;
+    }
+    const cosRef = Math.cos((latSum / cells.length) * Math.PI / 180);
+
+    const rows = new Map();
+    let minRow = Infinity, maxRow = -Infinity;
+    for (const [lat, lng] of cells) {
+        const y = lat * KM_PER_DEG_LAT;
+        const x = lng * KM_PER_DEG_LAT * cosRef;
+        const r = Math.floor(y / rowKm);
+        if (!rows.has(r)) rows.set(r, []);
+        rows.get(r).push([x, y]);
+        if (r < minRow) minRow = r;
+        if (r > maxRow) maxRow = r;
+    }
+
+    let km2 = 0;
+    for (let r = minRow - ROWS_PER_RADIUS; r <= maxRow + ROWS_PER_RADIUS; r++) {
+        const spans = [];
+        const yMid = (r + 0.5) * rowKm;
+        for (let dr = -ROWS_PER_RADIUS; dr <= ROWS_PER_RADIUS; dr++) {
+            const pts = rows.get(r + dr);
+            if (!pts) continue;
+            for (const [x, y] of pts) {
+                const dy = y - yMid;
+                const half = Math.sqrt(radiusKm * radiusKm - dy * dy);
+                if (half > 0) spans.push([x - half, x + half]);
+            }
+        }
+        if (spans.length === 0) continue;
+        spans.sort((a, b) => a[0] - b[0]);
+        let width = 0;
+        let [lo, hi] = spans[0];
+        for (let i = 1; i < spans.length; i++) {
+            const [a, b] = spans[i];
+            if (a > hi) {
+                width += hi - lo;
+                lo = a; hi = b;
+            } else if (b > hi) {
+                hi = b;
+            }
+        }
+        width += hi - lo;
+        const lat = yMid / KM_PER_DEG_LAT;
+        km2 += width * rowKm * Math.cos(lat * Math.PI / 180) / cosRef;
+    }
+    return km2;
+}
+
 /**
  * Serialize a heat grid to a compact array for caching: [[gx, gy, count], ...].
  */
@@ -587,23 +614,9 @@ function resetMap() {
     runTasks();
 }
 
-function eraseRoute() {
-    routingControls.forEach(control => {
-        try {
-            map.removeControl(control);
-        } catch (e) {
-            // Control may already be removed
-        }
-    });
-    routingControls = [];
-    notifyLegend();
-}
-
 // Function to erase all layers from the map
 function eraseLayers() {
-    eraseRoute();
-
-    // Remove all other layers (includes the heatmap layer, if present)
+    // Remove all layers (includes the heatmap layer, if present)
     map.eachLayer((layer) => {
         layer.remove();
     });

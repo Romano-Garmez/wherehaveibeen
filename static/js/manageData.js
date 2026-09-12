@@ -16,6 +16,9 @@ let flightHighestAltitude = 0;
 let flightHighestVelocity = 0;
 let flightDistanceKm = 0;
 let flightArea = 0;
+// Heatmap mode has no route to measure, so the distance stat is blanked
+// rather than shown as zero.
+let distanceApplicable = true;
 
 let firstLoad = true;
 
@@ -393,7 +396,11 @@ function flightsIncluded() {
 
 function refreshStats() {
     const incl = flightsIncluded();
-    showDistanceStat(distanceKm + (incl ? flightDistanceKm : 0), incl);
+    if (distanceApplicable) {
+        showDistanceStat(distanceKm + (incl ? flightDistanceKm : 0), incl);
+    } else {
+        blankDistanceStat();
+    }
     showAreaStat(area + (incl ? flightArea : 0));
     showAltitudeStat(incl ? Math.max(highestAltitude, flightHighestAltitude) : highestAltitude);
     showSpeedStat(incl ? Math.max(highestVelocity, flightHighestVelocity) : highestVelocity, drivingFlyingThresholdKMH);
@@ -443,7 +450,17 @@ function resetAreaStats() {
 function resetCoverageStats() {
     distanceKm = 0;
     flightDistanceKm = 0;
+    distanceApplicable = true;
     resetAreaStats();
+}
+
+function setHeatmapCoverage(km2) {
+    distanceKm = 0;
+    flightDistanceKm = 0;
+    distanceApplicable = false;
+    area = km2;
+    flightArea = 0;
+    refreshStats();
 }
 
 function accumulatePointStats(data) {
