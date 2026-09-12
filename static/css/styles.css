@@ -683,12 +683,6 @@ body.mode-heatmap #flightsChip {
     border: 2px solid var(--line);
 }
 
-.callout--plain {
-    padding: 0;
-    background: none;
-    border: none;
-}
-
 .callout__title {
     margin: 0 0 2px;
     font-size: 14px;
@@ -817,11 +811,6 @@ body.mode-heatmap #flightsChip {
     gap: 8px;
 }
 
-body.mode-heatmap #routeLineRow {
-    opacity: .45;
-    pointer-events: none;
-}
-
 /* ===========================
    Buttons
    =========================== */
@@ -864,16 +853,6 @@ body.mode-heatmap #routeLineRow {
     color: #fff;
     background: var(--red);
     border-color: var(--red);
-}
-
-.btn--danger-outline {
-    color: var(--red);
-    border-color: var(--red);
-}
-
-.btn--danger-outline:hover {
-    color: var(--red);
-    background: #fdf2f3;
 }
 
 .btn--warning-outline {
@@ -960,12 +939,6 @@ body.mode-heatmap #routeLineRow {
     height: 9px;
     background: var(--blue);
     opacity: .6;
-}
-
-.legend__swatch--road {
-    width: 22px;
-    height: 3px;
-    background: var(--red);
 }
 
 .legend__swatch--flight {

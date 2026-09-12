@@ -1,6 +1,3 @@
-// Track all OSRM routing controls so they can be properly removed
-let routingControls = [];
-
 // Track the heatmap layer so it can be cleared on re-render
 let heatLayer = null;
 
@@ -16,7 +13,6 @@ let zoomHookAttached = false;
 const EXPLORED_COLOR = '#3d6ba8';
 const FLIGHT_COLOR = '#e6a23c';
 const FLIGHT_LINE_COLOR = '#c98418';
-const ROAD_LINE_STYLE = { color: '#dc3545', weight: 3, opacity: .9 };
 
 // A 0.5 km buffer is sub-pixel below zoom ~9, so the polygon outline is
 // thickened and the fill darkened as the map zooms out to keep it legible.
@@ -92,14 +88,6 @@ function setFlightLayersVisible(shown) {
     if (shown) raiseFlightLines();
 }
 
-function hasRouteLines() {
-    return routingControls.length > 0;
-}
-
-function notifyLegend() {
-    if (typeof syncLegend === 'function') syncLegend();
-}
-
 function addBaseLayer() {
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -123,21 +111,10 @@ async function calculateAndDrawRoute(data, latlngsList, color, options = {}) {
         if (latlngs.length > 1) {
             let linestring;
 
-            //complex route buffer can only handle 500 points or less
             //simple route buffer can handle any number, but gets pretty slow north of 3000
             //no route is much quicker, but less accurate. Use the minDistance value to adjust accuracy.
             //Points between .01km of each other will be skipped if you pass in .01km
-            //Flights never go through OSRM: there is no road between two airports.
-            if (data.features.length < 500 && !isFlight) {
-                try {
-                    linestring = await calculateComplexRoute(latlngs);
-                } catch (err) {
-                    // OSRM routing failed (e.g., no road route possible over water)
-                    // Fall back to simple route calculation
-                    console.warn("Complex route calculation failed, falling back to simple route:", err.message);
-                    linestring = await calculateSimpleRoute(latlngs);
-                }
-            } else if (data.features.length < 3000) {
+            if (data.features.length < 3000) {
                 linestring = await calculateSimpleRoute(latlngs);
             } else if (data.features.length < 5000) {
                 linestring = await calculateNoRoute(latlngs, 0.01);
@@ -235,65 +212,6 @@ async function calculateSimpleRoute(latlngs) {
     completeTask("simple route calculation", timeTaken);
 
     return lineString;
-}
-
-/**
- * Draw the route on the map using Leaflet Routing Machine.
- * @param {Array} latlngs - The gps points to draw the route with
- */
-async function calculateComplexRoute(latlngs) {
-    console.log("latlngs: ", latlngs);
-    let start = Date.now();
-
-    // Custom OSRM routers are no longer supported — the server always uses its
-    // configured OSRM URL (see /proxy). We no longer send an osrmURL param.
-    const serviceUrl = `/proxy?coords=`;
-
-    console.log("Service URL: ", serviceUrl);
-
-    return new Promise((resolve, reject) => {
-        let control = L.routing.control({
-            waypoints: latlngs
-                .map(function (latlng) {
-                    return L.latLng(latlng[0], latlng[1]);
-                }),
-            router: L.Routing.osrmv1({
-                serviceUrl: serviceUrl,
-                profile: 'car', // or 'bike', 'foot' depending on your needs
-            }),
-            routeWhileDragging: false,
-            addWaypoints: false,
-            fitSelectedRoutes: false,
-            show: false,
-            lineOptions: { styles: [ROAD_LINE_STYLE], addWaypoints: false },
-            createMarker: function () { return null; }, // Disable default marker
-        }).addTo(map);
-
-        // Track this control so it can be removed later
-        routingControls.push(control);
-        notifyLegend();
-
-        control.on('routesfound', function (e) {
-            let routes = e.routes;
-
-            // Create a lineString for buffering based on the actual route
-            let routeCoords = routes[0].coordinates.map(coord => [coord.lng, coord.lat]);
-            let lineString = turf.lineString(routeCoords);
-
-            let timeTaken = Date.now() - start;
-            completeTask("complex route calculation", timeTaken);
-
-            // Resolve the promise with the lineString
-            resolve(lineString);
-        });
-
-        control.on('routingerror', function (error) {
-            try { map.removeControl(control); } catch (e) { /* already gone */ }
-            routingControls = routingControls.filter(c => c !== control);
-            notifyLegend();
-            reject(new Error("Routing failed: " + error.message));
-        });
-    });
 }
 
 /**
@@ -587,23 +505,9 @@ function resetMap() {
     runTasks();
 }
 
-function eraseRoute() {
-    routingControls.forEach(control => {
-        try {
-            map.removeControl(control);
-        } catch (e) {
-            // Control may already be removed
-        }
-    });
-    routingControls = [];
-    notifyLegend();
-}
-
 // Function to erase all layers from the map
 function eraseLayers() {
-    eraseRoute();
-
-    // Remove all other layers (includes the heatmap layer, if present)
+    // Remove all layers (includes the heatmap layer, if present)
     map.eachLayer((layer) => {
         layer.remove();
     });

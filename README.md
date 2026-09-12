@@ -7,7 +7,7 @@
  ## Example Screenshots
 
 ![complexmode](screenshots/ComplexMode.png)
-### WhereHaveIBeen showing the roads I travelled over a long weekend, snapped to the road network
+### WhereHaveIBeen showing the area I travelled over a long weekend
 
 <br>
 <br>
@@ -29,7 +29,7 @@ I've always found the idea of a map that shows the places you've discovered fasc
 
 I've been looking for more excuses to get out and see things I haven't seen before, so I built WhereHaveIBeen to mark which areas of the "map" have already been discovered by me.
 
-WhereHaveIBeen is a web app to display your OwnTracks location history while doing some extra processing to snap the routes between each location update to roads. This allows you to see the exact route you've taken, without wasting your phone battery by uploading location every second.
+WhereHaveIBeen is a web app to display your OwnTracks location history. It joins each location update to the next and buffers the path into an explored area, so you can see where you've been without wasting your phone battery by uploading location every second.
 
 ---
 ## Extra Features
