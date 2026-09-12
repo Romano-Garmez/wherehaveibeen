@@ -769,13 +769,15 @@
                     : pointBuffer;
                 eraseLayers();
                 addBaseLayer();
+                // Area is re-derived from the merged buffer; distance must keep
+                // the cached total and only grow by the new segments.
+                resetAreaStats();
                 renderCachedBuffer(mergedBuffer, "blue");
                 if (cacheData.flying?.buffer) {
                     renderCachedBuffer(cacheData.flying.buffer, "red");
                     renderCachedFlightLines(cacheData.flying.lines);
                     recordFlightBuffer(cacheData.flying.buffer);
                 }
-                resetCoverageStats();
                 getBufferStats(mergedBuffer);
                 getOwntracksStatsIncremental(newData);
 
@@ -807,7 +809,9 @@
 
         eraseLayers();
         addBaseLayer();
-        resetCoverageStats();
+        // Area is re-derived from the merged buffers; distance must keep the
+        // cached total and only grow by the new segments.
+        resetAreaStats();
 
         let newDrivingBuffer = null;
         let newFlyingBuffer = null;
