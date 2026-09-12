@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0191FDDD943F55B78AA34A7A /* FitRegionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEAA22E0A8D19FD7C3D6A3B9 /* FitRegionTests.swift */; };
 		13B1676D419316B8657B86D5 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 252D2A40CB882E10A7AA5CBA /* Assets.xcassets */; };
 		1B8277438E4BCB58D53EE7D6 /* aggregate.json in Resources */ = {isa = PBXBuildFile; fileRef = 4D7A157BF73C4DEA910F410F /* aggregate.json */; };
 		1EC9AC439E930D48DD03F1A3 /* StatViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0646C08F3B37F56B7C165D4 /* StatViews.swift */; };
@@ -89,6 +90,7 @@
 		8B2FEC6728CFB86DF53E56CC /* WhereHaveIBeenTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = WhereHaveIBeenTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		98300D9715901F5FD068768C /* EveryoneScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EveryoneScreen.swift; sourceTree = "<group>"; };
 		A2920A3923123C865AC6DDC0 /* MapContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapContainer.swift; sourceTree = "<group>"; };
+		AEAA22E0A8D19FD7C3D6A3B9 /* FitRegionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FitRegionTests.swift; sourceTree = "<group>"; };
 		BD6BD36134403D96D9E9020F /* TrackStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackStore.swift; sourceTree = "<group>"; };
 		C0D41C7A498FBE852FB29A0A /* Credentials.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Credentials.swift; sourceTree = "<group>"; };
 		C802FD72C43E8E1E9392A25B /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
@@ -182,6 +184,7 @@
 			children = (
 				57A91221F2C541BAF72A3361 /* APIClientTests.swift */,
 				06E2F7C4294CD93AC53BF6D7 /* DateRangeTests.swift */,
+				AEAA22E0A8D19FD7C3D6A3B9 /* FitRegionTests.swift */,
 				E0CF9BFC3BFABB0819CA575B /* GeoJSONShapesTests.swift */,
 				046DAB47582A628FD762CC58 /* HeatTests.swift */,
 				D447FAC48F1157AE186D4FE8 /* StatFormatterTests.swift */,
@@ -386,6 +389,7 @@
 			files = (
 				8A9CB8346C73DD71F67AA063 /* APIClientTests.swift in Sources */,
 				395244E90CDA8448C0637AF5 /* DateRangeTests.swift in Sources */,
+				0191FDDD943F55B78AA34A7A /* FitRegionTests.swift in Sources */,
 				4524CE74B3EB4FEBF41D4DCD /* GeoJSONShapesTests.swift in Sources */,
 				FD3310D2F79C140982C59048 /* HeatTests.swift in Sources */,
 				DC43BA09DA4F82840B4AC26F /* StatFormatterTests.swift in Sources */,

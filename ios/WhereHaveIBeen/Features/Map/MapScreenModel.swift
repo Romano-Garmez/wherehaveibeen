@@ -302,7 +302,7 @@ final class MapScreenModel {
     }
 
     private func fitIfNeeded(key: String) {
-        guard !fittedKeys.contains(key), overlays.fitRect != nil else { return }
+        guard !fittedKeys.contains(key), !overlays.fitRegions.isEmpty else { return }
         fittedKeys.insert(key)
         fitGeneration += 1
     }

@@ -7,6 +7,7 @@ struct SignInView: View {
     @State private var errorMessage: String?
     @State private var isBusy = false
     @FocusState private var focus: Field?
+    @AppStorage(DeveloperSettings.useLocalAPIKey) private var useLocalAPI = false
 
     private enum Field { case username, password }
 
@@ -18,15 +19,10 @@ struct SignInView: View {
             .ignoresSafeArea()
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("WhereHaveIBeen")
-                            .font(.largeTitle.weight(.bold))
-                        Text("Sign in with your OwnTracks account to see the roads you've driven.")
-                            .font(.subheadline)
-                            .opacity(0.85)
-                    }
-                    .foregroundStyle(.white)
-                    .padding(.top, 80)
+                    Text("WhereHaveIBeen")
+                        .font(.largeTitle.weight(.bold))
+                        .foregroundStyle(.white)
+                        .padding(.top, 80)
 
                     VStack(spacing: 0) {
                         TextField("Username", text: $username)
@@ -77,9 +73,13 @@ struct SignInView: View {
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
 
-                    Text("Your credentials are sent to your own OwnTracks server. WhereHaveIBeen never stores your location history off-device.")
-                        .font(.caption)
-                        .foregroundStyle(.white.opacity(0.7))
+                    #if DEBUG
+                    Toggle("Use local API (localhost:5002)", isOn: $useLocalAPI)
+                        .font(.footnote)
+                        .foregroundStyle(.white.opacity(0.85))
+                        .tint(.white.opacity(0.5))
+                        .padding(.top, 8)
+                    #endif
                 }
                 .padding(24)
             }

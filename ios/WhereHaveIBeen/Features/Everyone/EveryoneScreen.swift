@@ -11,19 +11,12 @@ struct EveryoneScreen: View {
             MapContainer(overlays: model.overlays, fitGeneration: model.fitGeneration, bottomInset: cardHeight)
                 .ignoresSafeArea()
             VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .top, spacing: 10) {
-                    Image(systemName: "mappin.and.ellipse")
-                        .foregroundStyle(Color.accentColor)
-                        .padding(.top, 1)
-                    Text("Every road anyone on this server has driven, merged into one anonymised shape. No individual routes, devices or times.")
-                        .font(.footnote)
-                    Spacer(minLength: 0)
+                HStack {
+                    Spacer()
                     GlassIconButton(systemImage: "arrow.clockwise", accessibilityLabel: "Refresh") {
                         model.reload(refresh: true)
                     }
                 }
-                .padding(.horizontal, 14).padding(.vertical, 12)
-                .glassEffect(.regular, in: .rect(cornerRadius: 14))
                 StatusBanner(model: model)
             }
             .padding(.horizontal, 16)

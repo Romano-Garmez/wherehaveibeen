@@ -131,9 +131,13 @@ struct MapBottomCard<Accessory: View, Content: View>: View {
                 .padding(.horizontal, 16).padding(.bottom, 14)
         }
         .frame(maxWidth: .infinity)
-        .background(Color(uiColor: .systemBackground))
-        .clipShape(UnevenRoundedRectangle(topLeadingRadius: 16, topTrailingRadius: 16))
-        .shadow(color: .black.opacity(0.14), radius: 17, y: -6)
+        .background {
+            // Extends under the floating tab bar so the map never peeks through below the card.
+            UnevenRoundedRectangle(topLeadingRadius: 16, topTrailingRadius: 16)
+                .fill(Color(uiColor: .systemBackground))
+                .shadow(color: .black.opacity(0.14), radius: 17, y: -6)
+                .ignoresSafeArea(edges: .bottom)
+        }
     }
 }
 

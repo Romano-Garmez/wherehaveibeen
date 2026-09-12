@@ -1,14 +1,16 @@
 import Foundation
 
+/// Same presets as the web app's time frame buttons, in the same order.
 enum RangePreset: String, CaseIterable, Sendable, Codable {
-    case week, month, year, all
+    case all, month, week, hours48 = "48h", hours24 = "24h"
 
     var title: String {
         switch self {
-        case .week: "Week"
-        case .month: "Month"
-        case .year: "Year"
         case .all: "All time"
+        case .month: "Month"
+        case .week: "Week"
+        case .hours48: "48h"
+        case .hours24: "24h"
         }
     }
 }
@@ -20,9 +22,10 @@ enum DateRangeSelection: Sendable, Hashable, Codable {
     func resolve(now: Date, calendar: Calendar = .current) -> (from: Date?, to: Date?) {
         switch self {
         case .preset(.all): (nil, nil)
-        case .preset(.week): (calendar.date(byAdding: .day, value: -7, to: now), nil)
         case .preset(.month): (calendar.date(byAdding: .month, value: -1, to: now), nil)
-        case .preset(.year): (calendar.date(byAdding: .year, value: -1, to: now), nil)
+        case .preset(.week): (calendar.date(byAdding: .day, value: -7, to: now), nil)
+        case .preset(.hours48): (now.addingTimeInterval(-48 * 3600), nil)
+        case .preset(.hours24): (now.addingTimeInterval(-24 * 3600), nil)
         case .custom(let from, let to): (from, to)
         }
     }
@@ -41,7 +44,7 @@ enum DateRangeSelection: Sendable, Hashable, Codable {
         switch self {
         case .preset(let preset): preset.title
         case .custom(let from, let to):
-            "\(from.formatted(date: .abbreviated, time: .omitted)) – \(to.formatted(date: .abbreviated, time: .omitted))"
+            "\(from.formatted(date: .abbreviated, time: .shortened)) – \(to.formatted(date: .abbreviated, time: .shortened))"
         }
     }
 }

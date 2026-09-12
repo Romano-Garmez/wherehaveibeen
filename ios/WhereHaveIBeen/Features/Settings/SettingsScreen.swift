@@ -46,12 +46,8 @@ struct SettingsScreen: View {
                 }
 
                 #if DEBUG
-                Section {
+                Section("Developer") {
                     Toggle("Use local API (localhost:5002)", isOn: $useLocalAPI)
-                } header: {
-                    Text("Developer")
-                } footer: {
-                    Text(app.isMock ? "Running against the mock client." : "Takes effect on the next request.")
                 }
                 #endif
 

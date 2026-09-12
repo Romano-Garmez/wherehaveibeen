@@ -18,11 +18,18 @@ struct DateRangeTests {
         let month = DateRangeSelection.preset(.month).resolve(now: now, calendar: calendar)
         #expect(month.from == calendar.date(byAdding: .month, value: -1, to: now))
 
-        let year = DateRangeSelection.preset(.year).resolve(now: now, calendar: calendar)
-        #expect(year.from == calendar.date(byAdding: .year, value: -1, to: now))
+        let hours48 = DateRangeSelection.preset(.hours48).resolve(now: now, calendar: calendar)
+        #expect(hours48.from == now.addingTimeInterval(-48 * 3600))
+
+        let hours24 = DateRangeSelection.preset(.hours24).resolve(now: now, calendar: calendar)
+        #expect(hours24.from == now.addingTimeInterval(-24 * 3600))
 
         let all = DateRangeSelection.preset(.all).resolve(now: now, calendar: calendar)
         #expect(all.from == nil && all.to == nil)
+    }
+
+    @Test func presetsMatchTheWebAppInOrder() {
+        #expect(RangePreset.allCases.map(\.title) == ["All time", "Month", "Week", "48h", "24h"])
     }
 
     @Test func customSendsBothBounds() {
@@ -44,7 +51,7 @@ struct DateRangeTests {
         #expect(CacheKey.track(track) == "track|month|phone|800")
         let allDevices = TrackRequest(range: .preset(.all), device: nil, bufferM: 500)
         #expect(CacheKey.track(allDevices) == "track|all|all|500")
-        #expect(CacheKey.heatmap(HeatmapRequest(range: .preset(.year), device: nil)) == "heatmap|year|all")
+        #expect(CacheKey.heatmap(HeatmapRequest(range: .preset(.hours48), device: nil)) == "heatmap|48h|all")
         #expect(CacheKey.track(track).hasPrefix(CacheKey.trackPrefix))
     }
 

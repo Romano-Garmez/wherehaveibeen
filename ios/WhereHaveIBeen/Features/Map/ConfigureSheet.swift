@@ -1,36 +1,29 @@
 import SwiftUI
 
-enum RangeChoice: String, CaseIterable, Identifiable {
-    case week, month, year, all, custom
+enum RangeChoice: Hashable, Identifiable {
+    case preset(RangePreset)
+    case custom
 
-    var id: String { rawValue }
+    static let allCases: [RangeChoice] = RangePreset.allCases.map(RangeChoice.preset) + [.custom]
 
-    var title: String {
+    var id: String {
         switch self {
-        case .week: "Week"
-        case .month: "Month"
-        case .year: "Year"
-        case .all: "All"
-        case .custom: "Custom"
+        case .preset(let preset): preset.rawValue
+        case .custom: "custom"
         }
     }
 
-    var preset: RangePreset? {
+    var title: String {
         switch self {
-        case .week: .week
-        case .month: .month
-        case .year: .year
-        case .all: .all
-        case .custom: nil
+        case .preset(.all): "All"
+        case .preset(let preset): preset.title
+        case .custom: "Custom"
         }
     }
 
     init(_ range: DateRangeSelection) {
         switch range {
-        case .preset(.week): self = .week
-        case .preset(.month): self = .month
-        case .preset(.year): self = .year
-        case .preset(.all): self = .all
+        case .preset(let preset): self = .preset(preset)
         case .custom: self = .custom
         }
     }
@@ -53,7 +46,7 @@ struct ConfigureSheet: View {
             _customFrom = State(initialValue: from)
             _customTo = State(initialValue: to)
         } else {
-            _customFrom = State(initialValue: Calendar.current.date(byAdding: .month, value: -1, to: .now) ?? .now)
+            _customFrom = State(initialValue: Calendar.current.date(byAdding: .day, value: -1, to: .now) ?? .now)
             _customTo = State(initialValue: .now)
         }
     }
@@ -81,13 +74,11 @@ struct ConfigureSheet: View {
                         .labelsHidden()
                     }
                     if rangeChoice == .custom {
-                        DatePicker("Starts", selection: $customFrom, in: ...customTo, displayedComponents: .date)
-                        DatePicker("Ends", selection: $customTo, in: customFrom...Date.now, displayedComponents: .date)
+                        DatePicker("Starts", selection: $customFrom, in: ...customTo, displayedComponents: [.date, .hourAndMinute])
+                        DatePicker("Ends", selection: $customTo, in: customFrom...Date.now, displayedComponents: [.date, .hourAndMinute])
                     }
                 } header: {
                     Text("Data")
-                } footer: {
-                    Text("Times shown in your local timezone.")
                 }
 
                 Section {
@@ -106,8 +97,6 @@ struct ConfigureSheet: View {
                     BufferStepper(bufferM: $model.configuration.bufferM)
                 } header: {
                     Text("Map")
-                } footer: {
-                    Text("Segments faster than 200 mph aren't roads, so they're kept out of driven roads and out of your distance and area totals. A larger buffer takes longer and clears your routes cache.")
                 }
             }
             .navigationTitle("Configure")
@@ -125,13 +114,11 @@ struct ConfigureSheet: View {
 
     private func applyRange() {
         let range: DateRangeSelection
-        if let preset = rangeChoice.preset {
+        switch rangeChoice {
+        case .preset(let preset):
             range = .preset(preset)
-        } else {
-            let calendar = Calendar.current
-            let start = calendar.startOfDay(for: customFrom)
-            let end = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: customTo)) ?? customTo
-            range = .custom(from: start, to: min(end, .now))
+        case .custom:
+            range = .custom(from: customFrom, to: min(customTo, .now))
         }
         if model.configuration.range != range {
             model.configuration.range = range
