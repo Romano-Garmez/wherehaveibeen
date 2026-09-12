@@ -130,11 +130,20 @@ body.app-shell {
 }
 
 .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     font-weight: 800;
     font-size: 20px;
     letter-spacing: -.02em;
     color: #fff;
     white-space: nowrap;
+}
+
+.brand__icon {
+    width: 28px;
+    height: 20px;
+    image-rendering: pixelated;
 }
 
 .brand:hover {
@@ -1666,10 +1675,14 @@ code {
     }
 
     .brand {
-        display: flex;
-        align-items: center;
+        gap: 8px;
         height: 52px;
         font-size: 16px;
+    }
+
+    .brand__icon {
+        width: 21px;
+        height: 15px;
     }
 
     .topbar__links {

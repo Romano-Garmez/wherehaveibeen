@@ -1,0 +1,83 @@
+name: WhereHaveIBeen
+options:
+  bundleIdPrefix: com.romangarms
+  deploymentTarget:
+    iOS: "26.0"
+  xcodeVersion: "26.6"
+  createIntermediateGroups: true
+  groupSortPosition: top
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_APPROACHABLE_CONCURRENCY: YES
+    SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY: YES
+    CODE_SIGN_STYLE: Automatic
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    LOCALIZATION_PREFERS_STRING_CATALOGS: YES
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  WhereHaveIBeen:
+    type: application
+    platform: iOS
+    sources:
+      - path: WhereHaveIBeen
+        excludes:
+          - Info.plist
+    info:
+      path: WhereHaveIBeen/Info.plist
+      properties:
+        CFBundleDisplayName: Where Have I Been
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        ITSAppUsesNonExemptEncryption: false
+        NSAppTransportSecurity:
+          NSExceptionDomains:
+            localhost:
+              NSExceptionAllowsInsecureHTTPLoads: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.romangarms.wherehaveibeen
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        SUPPORTS_MACCATALYST: NO
+  WhereHaveIBeenTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: WhereHaveIBeenTests
+    dependencies:
+      - target: WhereHaveIBeen
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.romangarms.wherehaveibeen.tests
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  WhereHaveIBeen:
+    build:
+      targets:
+        WhereHaveIBeen: all
+        WhereHaveIBeenTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - WhereHaveIBeenTests
+  WhereHaveIBeen Mock:
+    build:
+      targets:
+        WhereHaveIBeen: all
+    run:
+      config: Debug
+      commandLineArguments:
+        "--mock-api": true
+        "--mock-signed-in": true

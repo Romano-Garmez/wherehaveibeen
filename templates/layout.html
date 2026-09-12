@@ -30,12 +30,15 @@
     <script src="/static/js/drawOnMap.js"></script>
     <script src="/static/js/logIn.js"></script>
 
-    <link rel="icon" type="image/x-icon" href="/static/favicon/wherehaveibeen.png">
+    <link rel="icon" type="image/png" href="/static/favicon/wherehaveibeen.png">
 </head>
 
 <body class="{% block bodyclass %}{% endblock %}">
     <header class="topbar">
-        <a class="brand" href="/">WhereHaveIBeen</a>
+        <a class="brand" href="/">
+            <img class="brand__icon" src="/static/favicon/wherehaveibeen-mark.png" alt="" width="28" height="20">
+            WhereHaveIBeen
+        </a>
 
         <nav class="scope" aria-label="Map scope">
             <a class="scope__btn{% if request.path == '/' %} is-active{% endif %}" href="/">
