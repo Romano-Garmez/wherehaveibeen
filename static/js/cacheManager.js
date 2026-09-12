@@ -352,6 +352,7 @@ async function clearHeatmapCache(user, device) {
 function validateHeatmapCache(cache) {
     if (!cache || typeof cache !== 'object') return false;
     if (!Array.isArray(cache.cells)) return false;
+    if (!Array.isArray(cache.pathCells)) return false;
     if (!cache.timestamp) return false;
     // HEATMAP_CELL_DEG is defined in drawOnMap.js (loaded alongside this file)
     if (typeof HEATMAP_CELL_DEG !== 'undefined' && cache.cellDeg !== HEATMAP_CELL_DEG) {
